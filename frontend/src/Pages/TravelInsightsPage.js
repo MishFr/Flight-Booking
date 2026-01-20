@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
+import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { fetchTravelHistory } from '../Features/travelInsightsSlice';
 
 const TravelInsightsPage = () => {
   const navigate = useNavigate();
-  const dispatch = useDispatch();
   const user = useSelector((state) => state.auth.user);
   const [activeTab, setActiveTab] = useState('recommendations');
   const [travelHistory, setTravelHistory] = useState([]);

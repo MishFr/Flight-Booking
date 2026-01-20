@@ -1,6 +1,5 @@
-# TODO: Fix ESLint Errors
+# TODO: Fix ESLint Errors in Flight Booking Project
 
-- [x] Add missing imports for admin pages in src/App.js
-- [x] Fix undefined 'user' in src/Components/Header.js by importing useSelector and retrieving user from Redux store
-- [x] Import adminReducer in src/store.js
-- [x] Run ESLint to verify all errors are resolved
+- [x] Edit SpecialOffersPage.js: Remove 'loading' and 'error' from useSelector destructuring
+- [x] Edit TravelInsightsPage.js: Remove unused import 'fetchTravelHistory' and unused 'dispatch' variable
+- [ ] Run ESLint to verify that errors are resolved

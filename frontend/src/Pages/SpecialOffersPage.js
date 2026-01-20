@@ -6,7 +6,7 @@ import { fetchSpecialOffers } from '../Features/specialOffersSlice';
 const SpecialOffersPage = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { offers, loading, error } = useSelector((state) => state.specialOffers);
+  const { offers } = useSelector((state) => state.specialOffers);
 
   useEffect(() => {
     dispatch(fetchSpecialOffers());

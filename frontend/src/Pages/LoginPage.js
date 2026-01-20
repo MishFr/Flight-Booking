@@ -321,7 +321,7 @@ const LoginPage = () => {
               <a href="https://www.x.com" target="_blank" rel="noopener noreferrer" className="footer-link" style={{ fontSize: '1.1em' }}>X</a>
             </div>
             <p style={{ marginTop: '30px', color: 'rgba(255,255,255,0.4)', fontSize: '0.9em' }}>
-              © 2024 Flight Booking System. All rights reserved.
+              © 2026 Flight Booking System. All rights reserved.
             </p>
           </div>
         </div>
