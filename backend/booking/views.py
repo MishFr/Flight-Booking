@@ -15,6 +15,19 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+class HomeView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        return Response({
+            "message": "Welcome to Flight Booking API",
+            "version": "1.0",
+            "endpoints": {
+                "api": "/api/",
+                "admin": "/admin/"
+            }
+        })
+
 class RegisterView(generics.CreateAPIView):
     queryset = CustomUser.objects.all()
     serializer_class = CustomUserSerializer
@@ -159,6 +172,22 @@ class AdminUserApproveView(APIView):
             # Trigger email notification
             from .tasks import send_approval_email_task
             send_approval_email_task.delay(user.id)
+            serializer = AdminUserSerializer(user)
+            return Response(serializer.data)
+        except CustomUser.DoesNotExist:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+class AdminUserRejectView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def post(self, request, pk):
+        try:
+            user = CustomUser.objects.get(pk=pk)
+            user.status = 'rejected'
+            user.save()
+            # Trigger email notification
+            from .tasks import send_rejection_email_task
+            send_rejection_email_task.delay(user.id)
             serializer = AdminUserSerializer(user)
             return Response(serializer.data)
         except CustomUser.DoesNotExist:
