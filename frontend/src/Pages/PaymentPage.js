@@ -59,6 +59,11 @@ const PaymentPage = () => {
       }
     }
 
+    if ((!paymentData.cardholderName.trim()) && (!paymentData.billingAddress.trim())) {
+      newErrors.cardholderName = 'Cardholder name is required';
+      newErrors.billingAddress = 'Billing address is required';
+    }
+
     if (!/^\d{3,4}$/.test(paymentData.cvv)) {
       newErrors.cvv = 'Please enter a valid CVV (3-4 digits)';
     }

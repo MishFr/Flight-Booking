@@ -36,10 +36,16 @@ class Flight(models.Model):
 
 class Booking(models.Model):
     """
-    Booking model with relationships to user and flight, including payment status.
+    Booking model with relationships to user and flight, including payment status and booking status.
     """
+    STATUS_CHOICES = [
+        ('confirmed', 'Confirmed'),
+        ('cancelled', 'Cancelled'),
+        ('pending', 'Pending'),
+    ]
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='bookings', help_text="User who made the booking.")
     flight = models.ForeignKey(Flight, on_delete=models.CASCADE, related_name='bookings', help_text="Flight being booked.")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', help_text="Booking status.")
     payment_status = models.CharField(
         max_length=20,
         choices=[

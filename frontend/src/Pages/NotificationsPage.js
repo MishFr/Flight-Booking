@@ -1,5 +1,5 @@
 // src/Pages/NotificationsPage.js
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchNotifications } from '../Features/notificationsSlice';
@@ -8,7 +8,6 @@ const NotificationsPage = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const user = useSelector((state) => state.auth.user);
-  const { notifications, loading, error } = useSelector((state) => state.notifications);
   const { offers: specialOffers } = useSelector((state) => state.specialOffers);
 
   // Placeholder data for flightStatusChanges and gateInformation

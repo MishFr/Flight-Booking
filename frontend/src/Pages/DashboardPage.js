@@ -178,7 +178,7 @@ const DashboardPage = () => {
               <p>Protect your journey with comprehensive travel insurance covering trip cancellations, medical emergencies, and lost baggage.</p>
               <button className="action-button" onClick={() => window.open('https://www.allianztravelinsurance.com/', '_blank')}>Get Insurance</button>
               <br />
-              <a href="https://www.allianztravelinsurance.com/travel-insurance-plans" target="_blank" style={{ color: '#667eea', textDecoration: 'none', fontWeight: 'bold' }}>Learn More</a>
+              <a href="https://www.allianztravelinsurance.com/travel-insurance-plans" target="_blank" rel="noreferrer" style={{ color: '#667eea', textDecoration: 'none', fontWeight: 'bold' }}>Learn More</a>
             </div>
 
             <div className="card">
@@ -186,7 +186,7 @@ const DashboardPage = () => {
               <p>Join our rewards program to earn points on every flight, redeem for free tickets, upgrades, and exclusive perks.</p>
               <button className="action-button" onClick={() => window.open('https://www.delta.com/us/en/skymiles/medallion-program/overview', '_blank')}>Join Now</button>
               <br />
-              <a href="https://www.delta.com/us/en/skymiles/medallion-program/overview" target="_blank" style={{ color: '#667eea', textDecoration: 'none', fontWeight: 'bold' }}>Learn More</a>
+              <a href="https://www.delta.com/us/en/skymiles/medallion-program/overview" target="_blank" rel="noreferrer" style={{ color: '#667eea', textDecoration: 'none', fontWeight: 'bold' }}>Learn More</a>
             </div>
 
             <div className="card">
@@ -194,7 +194,7 @@ const DashboardPage = () => {
               <p>Get 24/7 assistance with your bookings, travel queries, and any issues. Our support team is here to help.</p>
               <button className="action-button" onClick={() => window.open('https://www.aa.com/i18n/customer-service/support/main.jsp', '_blank')}>Contact Support</button>
               <br />
-              <a href="https://www.aa.com/i18n/customer-service/support/main.jsp" target="_blank" style={{ color: '#667eea', textDecoration: 'none', fontWeight: 'bold' }}>Learn More</a>
+              <a href="https://www.aa.com/i18n/customer-service/support/main.jsp" target="_blank" rel="noreferrer" style={{ color: '#667eea', textDecoration: 'none', fontWeight: 'bold' }}>Learn More</a>
             </div>
 
             <div className="card">
@@ -202,7 +202,7 @@ const DashboardPage = () => {
               <p>Access detailed information about airports worldwide, including terminals, services, and travel tips.</p>
               <button className="action-button" onClick={() => window.open('https://www.faa.gov/airports/', '_blank')}>Explore Airports</button>
               <br />
-              <a href="https://www.faa.gov/airports/" target="_blank" style={{ color: '#667eea', textDecoration: 'none', fontWeight: 'bold' }}>Learn More</a>
+              <a href="https://www.faa.gov/airports/" target="_blank" rel="noreferrer" style={{ color: '#667eea', textDecoration: 'none', fontWeight: 'bold' }}>Learn More</a>
             </div>
           </div>
         </div>

@@ -1,5 +1,5 @@
 // src/Pages/BookingsPage.js
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchBookings, cancelBooking } from '../Features/bookingsSlice';
@@ -7,7 +7,7 @@ import { fetchBookings, cancelBooking } from '../Features/bookingsSlice';
 const BookingsPage = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { bookings, loading, error } = useSelector((state) => state.bookings);
+  const { bookings } = useSelector((state) => state.bookings);
 
   useEffect(() => {
     dispatch(fetchBookings());

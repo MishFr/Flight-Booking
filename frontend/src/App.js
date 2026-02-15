@@ -21,13 +21,15 @@ import MarketplacePage from './Pages/MarketplacePage';
 import AdminDashboardPage from './Pages/AdminDashboardPage';
 import AdminUsersPage from './Pages/AdminUsersPage';
 import AdminFlightsPage from './Pages/AdminFlightsPage';
+import SplashPage from './Pages/SplashPage';
 
 function App() {
   return (
     <>
       <Header />
       <Routes>
-        <Route path="/" element={<RegisterPage />} />
+        <Route path="/" element={<SplashPage />} />
+        <Route path="/splash" element={<SplashPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/dashboard" element={<DashboardPage />} />

@@ -6,7 +6,7 @@ import { useNavigate, Link } from 'react-router-dom';
 const LoginPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { loading, error, isAuthenticated } = useSelector((state) => state.auth);
+  const { loading, error, isAuthenticated, user } = useSelector((state) => state.auth);
   const [formData, setFormData] = useState({
     username: '',
     password: '',
@@ -23,15 +23,25 @@ const LoginPage = () => {
     e.preventDefault();
     const resultAction = await dispatch(loginUser(formData));
     if (loginUser.fulfilled.match(resultAction)) {
-      navigate('/dashboard');
+      // Check if user is admin and redirect accordingly
+      const loggedInUser = resultAction.payload.user;
+      if (loggedInUser && (loggedInUser.is_staff || loggedInUser.is_superuser)) {
+        navigate('/admin/dashboard');
+      } else {
+        navigate('/dashboard');
+      }
     }
   };
 
   React.useEffect(() => {
     if (isAuthenticated) {
-      navigate('/dashboard');
+      if (user && (user.is_staff || user.is_superuser)) {
+        navigate('/admin/dashboard');
+      } else {
+        navigate('/dashboard');
+      }
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, user]);
 
   return (
     <>

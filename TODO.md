@@ -1,5 +1,13 @@
-# TODO: Fix ESLint Errors in Flight Booking Project
+# Flight Search Mock Data Implementation
 
-- [x] Edit SpecialOffersPage.js: Remove 'loading' and 'error' from useSelector destructuring
-- [x] Edit TravelInsightsPage.js: Remove unused import 'fetchTravelHistory' and unused 'dispatch' variable
-- [ ] Run ESLint to verify that errors are resolved
+## Tasks
+- [x] Modify FlightSearchView in backend/booking/views.py to return mock flight data for testing
+- [x] Create a method to generate realistic mock flight data matching the expected API response format
+- [x] Ensure mock data includes various flight options with different prices, airlines, and routes
+- [x] Test the frontend search functionality with the mock data
+
+## Completed
+- [x] Analyze current flight search implementation
+- [x] Plan mock data integration
+- [x] Get user approval for the plan
+- [x] Start frontend and backend servers for testing

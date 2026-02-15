@@ -11,11 +11,70 @@ const SearchFlightsPage = () => {
   const [searchData, setSearchData] = useState({
     from: '',
     to: '',
+    fromCountry: '',
+    toCountry: '',
     departureDate: '',
     returnDate: '',
     passengers: 1,
     class: 'economy'
   });
+
+  // List of all countries
+  const countries = [
+    'Afghanistan', 'Albania', 'Algeria', 'Andorra', 'Angola', 'Antigua and Barbuda', 'Argentina', 'Armenia', 'Australia', 'Austria',
+    'Azerbaijan', 'Bahamas', 'Bahrain', 'Bangladesh', 'Barbados', 'Belarus', 'Belgium', 'Belize', 'Benin', 'Bhutan',
+    'Bolivia', 'Bosnia and Herzegovina', 'Botswana', 'Brazil', 'Brunei', 'Bulgaria', 'Burkina Faso', 'Burundi', 'Cabo Verde', 'Cambodia',
+    'Cameroon', 'Canada', 'Central African Republic', 'Chad', 'Chile', 'China', 'Colombia', 'Comoros', 'Congo', 'Costa Rica',
+    'Croatia', 'Cuba', 'Cyprus', 'Czech Republic', 'Denmark', 'Djibouti', 'Dominica', 'Dominican Republic', 'East Timor', 'Ecuador',
+    'Egypt', 'El Salvador', 'Equatorial Guinea', 'Eritrea', 'Estonia', 'Eswatini', 'Ethiopia', 'Fiji', 'Finland', 'France',
+    'Gabon', 'Gambia', 'Georgia', 'Germany', 'Ghana', 'Greece', 'Grenada', 'Guatemala', 'Guinea', 'Guinea-Bissau',
+    'Guyana', 'Haiti', 'Honduras', 'Hungary', 'Iceland', 'India', 'Indonesia', 'Iran', 'Iraq', 'Ireland',
+    'Israel', 'Italy', 'Jamaica', 'Japan', 'Jordan', 'Kazakhstan', 'Kenya', 'Kiribati', 'Korea North', 'Korea South',
+    'Kosovo', 'Kuwait', 'Kyrgyzstan', 'Laos', 'Latvia', 'Lebanon', 'Lesotho', 'Liberia', 'Libya', 'Liechtenstein',
+    'Lithuania', 'Luxembourg', 'Madagascar', 'Malawi', 'Malaysia', 'Maldives', 'Mali', 'Malta', 'Marshall Islands', 'Mauritania',
+    'Mauritius', 'Mexico', 'Micronesia', 'Moldova', 'Monaco', 'Mongolia', 'Montenegro', 'Morocco', 'Mozambique', 'Myanmar',
+    'Namibia', 'Nauru', 'Nepal', 'Netherlands', 'New Zealand', 'Nicaragua', 'Niger', 'Nigeria', 'North Macedonia', 'Norway',
+    'Oman', 'Pakistan', 'Palau', 'Panama', 'Papua New Guinea', 'Paraguay', 'Peru', 'Philippines', 'Poland', 'Portugal',
+    'Qatar', 'Romania', 'Russia', 'Rwanda', 'Saint Kitts and Nevis', 'Saint Lucia', 'Saint Vincent and the Grenadines', 'Samoa', 'San Marino', 'Sao Tome and Principe',
+    'Saudi Arabia', 'Senegal', 'Serbia', 'Seychelles', 'Sierra Leone', 'Singapore', 'Slovakia', 'Slovenia', 'Solomon Islands', 'Somalia',
+    'South Africa', 'South Sudan', 'Spain', 'Sri Lanka', 'Sudan', 'Suriname', 'Sweden', 'Switzerland', 'Syria', 'Taiwan',
+    'Tajikistan', 'Tanzania', 'Thailand', 'Togo', 'Tonga', 'Trinidad and Tobago', 'Tunisia', 'Turkey', 'Turkmenistan', 'Tuvalu',
+    'Uganda', 'Ukraine', 'United Arab Emirates', 'United Kingdom', 'United States', 'Uruguay', 'Uzbekistan', 'Vanuatu', 'Vatican City', 'Venezuela',
+    'Vietnam', 'Yemen', 'Zambia', 'Zimbabwe'
+  ];
+
+  // Geolocation function
+  const getCurrentLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+          try {
+            // Use reverse geocoding to get city and country
+            const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`);
+            const data = await response.json();
+            const city = data.city || data.locality || '';
+            const country = data.countryName || '';
+            setSearchData(prev => ({
+              ...prev,
+              from: city,
+              fromCountry: country
+            }));
+          } catch (error) {
+            console.error('Error getting location:', error);
+            alert('Unable to get your current location. Please enter manually.');
+          }
+        },
+        (error) => {
+          console.error('Geolocation error:', error);
+          alert('Location access denied. Please enter your location manually.');
+        }
+      );
+    } else {
+      alert('Geolocation is not supported by this browser.');
+    }
+  };
+
 
   const handleInputChange = (e) => {
     setSearchData({
@@ -32,6 +91,8 @@ const SearchFlightsPage = () => {
   const handleBookFlight = (flight) => {
     navigate('/payment', { state: { item: flight, type: 'flight' } });
   };
+
+
 
   return (
     <>
@@ -109,8 +170,8 @@ const SearchFlightsPage = () => {
           .flight-card {
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
             border-radius: 15px;
-            padding: 25px;
-            margin: 15px 0;
+            padding: 15px;
+            margin: 10px 0;
             box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
             backdrop-filter: blur(4px);
             border: 1px solid rgba(255, 255, 255, 0.18);
@@ -240,18 +301,55 @@ const SearchFlightsPage = () => {
           <form className="search-form" onSubmit={handleSearch}>
             <div className="form-row">
               <div className="form-group">
-                <label>From</label>
-                <input
-                  type="text"
-                  name="from"
-                  value={searchData.from}
-                  onChange={handleInputChange}
-                  placeholder="Departure City"
-                  required
-                />
+                <label>From Country</label>
+                <select name="fromCountry" value={searchData.fromCountry} onChange={handleInputChange}>
+                  <option value="">Select Country</option>
+                  {countries.map(country => (
+                    <option key={country} value={country}>{country}</option>
+                  ))}
+                </select>
               </div>
               <div className="form-group">
-                <label>To</label>
+                <label>From City</label>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <input
+                    type="text"
+                    name="from"
+                    value={searchData.from}
+                    onChange={handleInputChange}
+                    placeholder="Departure City"
+                    required
+                    style={{ flex: 1 }}
+                  />
+                  <button
+                    type="button"
+                    onClick={getCurrentLocation}
+                    style={{
+                      padding: '12px',
+                      background: '#28a745',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontSize: '16px'
+                    }}
+                    title="Use Current Location"
+                  >
+                    📍
+                  </button>
+                </div>
+              </div>
+              <div className="form-group">
+                <label>To Country</label>
+                <select name="toCountry" value={searchData.toCountry} onChange={handleInputChange}>
+                  <option value="">Select Country</option>
+                  {countries.map(country => (
+                    <option key={country} value={country}>{country}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>To City</label>
                 <input
                   type="text"
                   name="to"
@@ -261,6 +359,8 @@ const SearchFlightsPage = () => {
                   required
                 />
               </div>
+            </div>
+            <div className="form-row">
               <div className="form-group">
                 <label>Departure Date</label>
                 <input
@@ -280,8 +380,6 @@ const SearchFlightsPage = () => {
                   onChange={handleInputChange}
                 />
               </div>
-            </div>
-            <div className="form-row">
               <div className="form-group">
                 <label>Passengers</label>
                 <select name="passengers" value={searchData.passengers} onChange={handleInputChange}>
@@ -328,7 +426,7 @@ const SearchFlightsPage = () => {
                   <div className="flight-details">
                     <div className="detail-item">
                       <div className="detail-label">From</div>
-                      <div className="detail-value">{flight.from}</div>
+                      <div className="detail-value">{flight.from_location}</div>
                     </div>
                     <div className="detail-item">
                       <div className="detail-label">To</div>
@@ -365,6 +463,21 @@ const SearchFlightsPage = () => {
             <div className="no-results">
               <h2>No flights found</h2>
               <p>Try adjusting your search criteria or check back later for more options.</p>
+            </div>
+          )}
+
+          {!loading && error && (
+            <div className="error-message" style={{
+              textAlign: 'center',
+              padding: '50px',
+              color: '#d32f2f',
+              fontSize: '18px',
+              backgroundColor: '#ffebee',
+              borderRadius: '10px',
+              marginTop: '20px'
+            }}>
+              <h2>Error occurred</h2>
+              <p>{error}</p>
             </div>
           )}
         </div>

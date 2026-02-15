@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, Link } from 'react-router-dom';
 import { registerUser } from '../Features/authSlice';
@@ -7,8 +7,9 @@ import { searchFlights } from '../Features/flightsSlice';
 const RegisterPage = () => {
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
-    username: '',
     email: '',
+    first_name: '',
+    last_name: '',
     password: '',
     confirmPassword: ''
   });
@@ -20,6 +21,72 @@ const RegisterPage = () => {
     passengers: 1,
     class: 'economy'
   });
+
+  // Image slideshow states
+  const [bgImageIndex, setBgImageIndex] = useState(0);
+  const [cardImageIndices, setCardImageIndices] = useState([0, 0, 0, 0, 0]);
+
+  // Background images array
+  const bgImages = [
+    "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&h=1080&fit=crop",
+    "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=1920&h=1080&fit=crop",
+    "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&h=1080&fit=crop",
+    "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&h=1080&fit=crop",
+    "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&h=1080&fit=crop",
+    "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&h=1080&fit=crop"
+  ];
+
+  // Card images arrays
+  const cardImages = useMemo(() => [
+    [
+      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400",
+      "https://images.unsplash.com/photo-1556761175-b413da4baf72?w=400",
+      "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=400",
+      "https://images.unsplash.com/photo-1556761175-4b46a572b786?w=400"
+    ],
+    [
+      "https://images.unsplash.com/photo-1489599735734-79b4d4c4b5c?w=400",
+      "https://images.unsplash.com/photo-1489599735734-79b4d4c4b5c?w=400",
+      "https://images.unsplash.com/photo-1489599735734-79b4d4c4b5c?w=400",
+      "https://images.unsplash.com/photo-1489599735734-79b4d4c4b5c?w=400"
+    ],
+    [
+      "https://images.unsplash.com/photo-1511895426328-dc8714191300?w=400",
+      "https://images.unsplash.com/photo-1511895426328-dc8714191300?w=400",
+      "https://images.unsplash.com/photo-1511895426328-dc8714191300?w=400",
+      "https://images.unsplash.com/photo-1511895426328-dc8714191300?w=400"
+    ],
+    [
+      "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400",
+      "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400",
+      "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400",
+      "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400"
+    ],
+    [
+      "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400",
+      "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400",
+      "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400",
+      "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400"
+    ]
+  ], []);
+
+  // Background slideshow effect
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setBgImageIndex((prevIndex) => (prevIndex + 1) % bgImages.length);
+    }, 5000); // Change every 5 seconds
+    return () => clearInterval(interval);
+  }, [bgImages.length]);
+
+  // Card images slideshow effect
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCardImageIndices((prevIndices) =>
+        prevIndices.map((index, i) => (index + 1) % cardImages[i].length)
+      );
+    }, 3000); // Change every 3 seconds
+    return () => clearInterval(interval);
+  }, [cardImages]);
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -39,8 +106,26 @@ const RegisterPage = () => {
       alert('Passwords do not match');
       return;
     }
-    dispatch(registerUser(formData));
+    // Remove confirmPassword before sending to backend
+    const { confirmPassword, ...userData } = formData;
+    // Set username to email for backend compatibility
+    userData.username = formData.email;
+    dispatch(registerUser(userData));
   };
+
+  // Clear form after successful registration
+  React.useEffect(() => {
+    if (successMessage) {
+      setFormData({
+        username: '',
+        email: '',
+        first_name: '',
+        last_name: '',
+        password: '',
+        confirmPassword: ''
+      });
+    }
+  }, [successMessage]);
 
   const handleSearchInputChange = (e) => {
     setSearchData({
@@ -214,8 +299,8 @@ const RegisterPage = () => {
           paddingBottom: '40px'
         }}>
           <img
-            src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&h=1080&fit=crop"
-            alt="Aerial view of Victoria Falls"
+            src={bgImages[bgImageIndex]}
+            alt="Travel destination"
             style={{
               position: 'absolute',
               top: 0,
@@ -224,7 +309,10 @@ const RegisterPage = () => {
               height: '100%',
               objectFit: 'cover',
               zIndex: -1,
-              filter: 'brightness(0.7)'
+              filter: 'brightness(0.7)',
+              transition: 'opacity 1s ease-in-out, transform 1s ease-in-out, filter 1s ease-in-out',
+              transform: 'scale(1) rotate(0deg)',
+              borderRadius: '0px'
             }}
           />
 
@@ -405,7 +493,7 @@ const RegisterPage = () => {
                     delay: "0.8s"
                   }
                 ].map((card, index) => (
-                  <div 
+                  <div
                     key={index}
                     className="feature-card"
                     onClick={() => handleCardClick(card.link)}
@@ -418,15 +506,15 @@ const RegisterPage = () => {
                     }}
                   >
                     <div style={{ overflow: 'hidden', height: '200px' }}>
-                      <img 
-                        src={card.img} 
-                        alt={card.title} 
-                        style={{ 
-                          width: '100%', 
-                          height: '100%', 
+                      <img
+                        src={cardImages[index][cardImageIndices[index]]}
+                        alt={card.title}
+                        style={{
+                          width: '100%',
+                          height: '100%',
                           objectFit: 'cover',
-                          transition: 'transform 0.5s ease'
-                        }} 
+                          transition: 'transform 0.5s ease, opacity 1s ease-in-out'
+                        }}
                         onMouseOver={(e) => e.target.style.transform = 'scale(1.1)'}
                         onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
                       />
@@ -531,6 +619,44 @@ const RegisterPage = () => {
                     }}
                   />
                 </div>
+                <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+                  <div className="form-group" style={{ flex: 1 }}>
+                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#333' }}>First Name</label>
+                    <input
+                      type="text"
+                      name="first_name"
+                      value={formData.first_name}
+                      onChange={handleInputChange}
+                      required
+                      className="input-field"
+                      style={{
+                        width: '100%',
+                        padding: '14px',
+                        border: '2px solid transparent',
+                        borderRadius: '12px',
+                        fontSize: '16px',
+                      }}
+                    />
+                  </div>
+                  <div className="form-group" style={{ flex: 1 }}>
+                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#333' }}>Last Name</label>
+                    <input
+                      type="text"
+                      name="last_name"
+                      value={formData.last_name}
+                      onChange={handleInputChange}
+                      required
+                      className="input-field"
+                      style={{
+                        width: '100%',
+                        padding: '14px',
+                        border: '2px solid transparent',
+                        borderRadius: '12px',
+                        fontSize: '16px',
+                      }}
+                    />
+                  </div>
+                </div>
                 <div className="form-group" style={{ marginBottom: '20px' }}>
                   <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#333' }}>Password</label>
                   <input
@@ -570,7 +696,7 @@ const RegisterPage = () => {
                 
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || !!successMessage}
                   className="submit-btn"
                   style={{
                     width: '100%',
@@ -579,11 +705,11 @@ const RegisterPage = () => {
                     borderRadius: '12px',
                     fontSize: '18px',
                     fontWeight: '600',
-                    cursor: 'pointer',
+                    cursor: loading || !!successMessage ? 'not-allowed' : 'pointer',
                     marginBottom: '20px'
                   }}
                 >
-                  {loading ? 'Creating Account...' : 'Register'}
+                  {loading ? 'Creating Account...' : successMessage ? 'Registration Submitted' : 'Register'}
                 </button>
               </form>
               

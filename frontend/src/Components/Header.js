@@ -1,13 +1,17 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
+import { logout } from '../Features/authSlice';
 
 const Header = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const user = useSelector((state) => state.auth.user);
+  const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
   const [region, setRegion] = useState('US');
   const [showSignInDropdown, setShowSignInDropdown] = useState(false);
   const [showThreeDotsMenu, setShowThreeDotsMenu] = useState(false);
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
 
   const regions = [
     { code: 'US', name: '🇺🇸 United States' },
@@ -36,6 +40,22 @@ const Header = () => {
   const handleRegister = () => {
     navigate('/register');
     setShowSignInDropdown(false);
+  };
+
+  const handleProfileClick = () => {
+    setShowProfileDropdown(!showProfileDropdown);
+  };
+
+  const handleProfileSettings = () => {
+    navigate('/profile-settings');
+    setShowProfileDropdown(false);
+  };
+
+  const handleLogout = () => {
+    dispatch(logout());
+    localStorage.removeItem('access_token');
+    navigate('/');
+    setShowProfileDropdown(false);
   };
 
   return (
@@ -118,6 +138,15 @@ const Header = () => {
           .sign-in-btn:hover {
             background: #5a67d8;
           }
+          .user-name {
+            color: #333;
+            font-weight: 500;
+            cursor: pointer;
+            position: relative;
+          }
+          .user-name:hover {
+            color: #667eea;
+          }
           .dropdown {
             position: absolute;
             top: 100%;
@@ -196,21 +225,39 @@ const Header = () => {
             ))}
           </select>
           <span className="help-support">🆘 Help & Support</span>
-          <div style={{ position: 'relative' }}>
-            <button className="sign-in-btn" onClick={handleSignInClick}>
-              👤 Sign In ▼
-            </button>
-            {showSignInDropdown && (
-              <div className="dropdown">
-                <div className="dropdown-item" onClick={handleLogin}>
-                  🔐 Login
+          {isAuthenticated ? (
+            <div style={{ position: 'relative' }}>
+              <span className="user-name" onClick={handleProfileClick}>
+                👤 {user ? `${user.first_name} ${user.last_name}`.trim() || user.username : 'User'} ▼
+              </span>
+              {showProfileDropdown && (
+                <div className="dropdown">
+                  <div className="dropdown-item" onClick={handleProfileSettings}>
+                    ⚙️ Profile Settings
+                  </div>
+                  <div className="dropdown-item" onClick={handleLogout}>
+                    🚪 Logout
+                  </div>
                 </div>
-                <div className="dropdown-item" onClick={handleRegister}>
-                  📝 Register
+              )}
+            </div>
+          ) : (
+            <div style={{ position: 'relative' }}>
+              <button className="sign-in-btn" onClick={handleSignInClick}>
+                👤 Sign In ▼
+              </button>
+              {showSignInDropdown && (
+                <div className="dropdown">
+                  <div className="dropdown-item" onClick={handleLogin}>
+                    🔐 Login
+                  </div>
+                  <div className="dropdown-item" onClick={handleRegister}>
+                    📝 Register
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
           <div style={{ position: 'relative' }}>
             <span className="three-dots" onClick={handleThreeDotsClick}>
               ⋮

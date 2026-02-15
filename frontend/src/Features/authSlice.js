@@ -6,13 +6,14 @@ const initialState = {
   loading: false,
   error: null,
   successMessage: null,
+  refreshToken: null,
 };
 
 export const registerUser = createAsyncThunk(
   'auth/registerUser',
   async (userData, { rejectWithValue }) => {
     try {
-      const response = await fetch('http://localhost:8000/api/register/', {
+      const response = await fetch('http://localhost:8000/api/auth/register/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -21,6 +22,14 @@ export const registerUser = createAsyncThunk(
       });
       if (!response.ok) {
         const errorData = await response.json();
+        // Handle validation errors
+        if (errorData.username || errorData.email || errorData.password) {
+          const errors = [];
+          if (errorData.username) errors.push(`Username: ${errorData.username.join(' ')}`);
+          if (errorData.email) errors.push(`Email: ${errorData.email.join(' ')}`);
+          if (errorData.password) errors.push(`Password: ${errorData.password.join(' ')}`);
+          throw new Error(errors.join('; '));
+        }
         throw new Error(errorData.detail || 'Registration failed');
       }
       const data = await response.json();
@@ -35,7 +44,7 @@ export const loginUser = createAsyncThunk(
   'auth/loginUser',
   async (userData, { rejectWithValue }) => {
     try {
-      const response = await fetch('http://localhost:8000/api/login/', {
+      const response = await fetch('http://localhost:8000/api/auth/login/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -79,7 +88,7 @@ const authSlice = createSlice({
       })
       .addCase(registerUser.fulfilled, (state, action) => {
         state.loading = false;
-        state.successMessage = 'Registration successful! Please wait for admin approval.';
+        state.successMessage = action.payload.message || 'Registration successful! Please wait for admin approval.';
       })
       .addCase(registerUser.rejected, (state, action) => {
         state.loading = false;
@@ -93,6 +102,10 @@ const authSlice = createSlice({
         state.loading = false;
         state.user = action.payload.user;
         state.isAuthenticated = true;
+        // Store the access token in localStorage
+        if (action.payload.access_token) {
+          localStorage.setItem('access_token', action.payload.access_token);
+        }
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.loading = false;
