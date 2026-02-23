@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from .views import AmadeusFlightSearchView, CreateOrderView, GetOrderView
 from .stripe_payment import (
     CreatePaymentIntentView,
     PaymentIntentConfirmView,
@@ -10,6 +11,7 @@ from .stripe_payment import (
 urlpatterns = [
     path('auth/register/', views.RegisterView.as_view(), name='register'),
     path('auth/login/', views.LoginView.as_view(), name='login'),
+    path('auth/logout/', views.LogoutView.as_view(), name='logout'),
     path('auth/token/refresh/', views.TokenRefreshView.as_view(), name='token-refresh'),
     path('flights/search/', views.FlightSearchView.as_view(), name='flight-search'),
     path('flights/status/<str:flight_number>/', views.FlightStatusView.as_view(), name='flight-status'),
@@ -32,4 +34,8 @@ urlpatterns = [
     path('payments/confirm/', PaymentIntentConfirmView.as_view(), name='confirm-payment'),
     path('payments/webhook/', StripeWebhookView.as_view(), name='stripe-webhook'),
     path('payments/publishable-key/', GetPublishableKeyView.as_view(), name='publishable-key'),
+    # Amadeus Service API endpoints
+    path('amadeus/search/', AmadeusFlightSearchView.as_view(), name='amadeus-flight-search'),
+    path('amadeus/create-order/', CreateOrderView.as_view(), name='amadeus-create-order'),
+    path('amadeus/order/<str:order_id>/', GetOrderView.as_view(), name='amadeus-get-order'),
 ]

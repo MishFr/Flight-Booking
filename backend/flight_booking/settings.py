@@ -82,16 +82,26 @@ WSGI_APPLICATION = 'flight_booking.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('DATABASE_NAME', 'postgres'),
-        'USER': os.environ.get('DATABASE_USER', 'postgres'),
-        'PASSWORD': os.environ.get('DATABASE_PASSWORD', '02Fr19mw10;.'),
-        'HOST': os.environ.get('DATABASE_HOST', 'db.bysfvtgictwixyxiszfr.supabase.co'),
-        'PORT': os.environ.get('DATABASE_PORT', '5432'),
+# Use SQLite for local development/demo (switch to PostgreSQL for production)
+# For demo: Use SQLite to avoid Supabase connection issues
+if os.environ.get('USE_SQLITE', 'true').lower() in ('true', '1', 'yes'):
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.environ.get('DATABASE_NAME', 'postgres'),
+            'USER': os.environ.get('DATABASE_USER', 'postgres'),
+            'PASSWORD': os.environ.get('DATABASE_PASSWORD', '02Fr19mw10;.'),
+            'HOST': os.environ.get('DATABASE_HOST', 'db.bysfvtgictwixyxiszfr.supabase.co'),
+            'PORT': os.environ.get('DATABASE_PORT', '5432'),
+        }
+    }
 
 
 # Password validation
@@ -234,3 +244,57 @@ ALLOWED_IPS = [
 BLOCKED_IPS = [
     # Add IPs to block here
 ]
+
+# Cache Configuration
+# Development: Use LocMemCache (in-memory cache)
+# Production: Use Redis for distributed caching
+CACHE_MODE = os.environ.get('CACHE_MODE', 'local')  # 'local' for dev, 'redis' for prod
+
+if CACHE_MODE == 'redis':
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+            'LOCATION': os.environ.get('REDIS_URL', 'redis://localhost:6379/1'),
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django.core.cache.backends.redis.RedisCache',
+            },
+            'KEY_PREFIX': 'flight_booking',
+            'TIMEOUT': 300,  # Default timeout: 5 minutes
+        }
+    }
+else:
+    # Local development with in-memory cache
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'unique-snowflake',
+            'TIMEOUT': 300,  # Default timeout: 5 minutes
+            'OPTIONS': {
+                'MAX_ENTRIES': 1000
+            }
+        }
+    }
+
+# Amadeus Service Configuration
+AMADEUS_TOKEN_CACHE_KEY = 'amadeus_access_token'
+AMADEUS_TOKEN_EXPIRY = 1800  # 30 minutes in seconds
+
+# JWT Configuration
+from datetime import timedelta
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': SECRET_KEY,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'USER_ID_FIELD': 'id',
+    'USER_ID_CLAIM': 'user_id',
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+    'TOKEN_TYPE_CLAIM': 'token_type',
+    'JTI_CLAIM': 'jti',
+    'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
+    'SLIDING_TOKEN_LIFETIME': timedelta(minutes=60),
+}

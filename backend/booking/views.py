@@ -11,14 +11,20 @@ from django.db import models
 from django.db.models import Q
 from datetime import date
 from .models import CustomUser, Flight, Booking
-from .serializers import CustomUserSerializer, FlightSerializer, BookingSerializer, AdminUserSerializer, AdminFlightSerializer
+from .serializers import (
+    CustomUserSerializer, FlightSerializer, BookingSerializer, 
+    AdminUserSerializer, AdminFlightSerializer,
+    FlightSearchSerializer, CreateOrderSerializer, GetOrderSerializer
+)
 from .aviationstack_client import AviationStackClient
 from .airlabs_client import AirLabsClient
 from .amadeus_client import AmadeusClient
+from .amadeus_service import AmadeusService
 from .permissions import (
     IsApprovedUser, IsAdminOrApprovedUser, IPAddressPermission, BookingRateLimitPermission,
     FlightSearchThrottle, BookingThrottle, AdminThrottle
 )
+from .iata_utils import get_iata_code, get_city_from_iata, is_valid_iata, get_airport_info
 import logging
 
 logger = logging.getLogger(__name__)
@@ -74,6 +80,19 @@ class LoginView(APIView):
                 'user': CustomUserSerializer(user).data
             })
         return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+
+class LogoutView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            refresh_token = request.data.get('refresh')
+            if refresh_token:
+                token = RefreshToken(refresh_token)
+                token.blacklist()
+            return Response({'message': 'Logout successful'}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'message': 'Logout successful'}, status=status.HTTP_200_OK)
 
 class FlightListView(generics.ListCreateAPIView):
     queryset = Flight.objects.all()
@@ -224,13 +243,22 @@ class FlightSearchView(generics.ListAPIView):
             # Fallback to database search if params are incomplete
             return super().list(request, *args, **kwargs)
 
+    def _get_iata_code(self, city_name):
+        """Convert city name to IATA code using the comprehensive IATA utility"""
+        return get_iata_code(city_name)
+
     def _search_amadeus_flights(self, departure, arrival, date_param):
         """Search for flights using the Amadeus API"""
         try:
+            origin_iata = self._get_iata_code(departure)
+            dest_iata = self._get_iata_code(arrival)
+            if not origin_iata or not dest_iata:
+                logger.warning(f"Could not convert to IATA: {departure} -> {origin_iata}, {arrival} -> {dest_iata}")
+                return None
             amadeus_client = AmadeusClient()
             flights = amadeus_client.search_flights(
-                origin_location=departure,
-                destination_location=arrival,
+                origin_location=origin_iata,
+                destination_location=dest_iata,
                 departure_date=date_param
             )
             if flights:
@@ -598,3 +626,159 @@ class AirportSearchView(generics.ListAPIView):
         if airports:
             return Response(airports)
         return Response({'error': 'No airports found'}, status=status.HTTP_404_NOT_FOUND)
+
+
+# New DRF APIViews using Amadeus Service
+
+class AmadeusFlightSearchView(APIView):
+    """APIView for searching flights using the Amadeus Service."""
+    permission_classes = [AllowAny]
+    throttle_classes = [AnonRateThrottle, FlightSearchThrottle]
+
+    def post(self, request):
+        serializer = FlightSearchSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        validated_data = serializer.validated_data
+        amadeus_service = AmadeusService()
+        
+        try:
+            departure_date_str = validated_data['departure_date'].isoformat()
+            return_date_str = validated_data.get('return_date')
+            return_date_str = return_date_str.isoformat() if return_date_str else None
+            
+            flights = amadeus_service.search_flights(
+                origin=validated_data['origin'],
+                destination=validated_data['destination'],
+                departure_date=departure_date_str,
+                return_date=return_date_str,
+                adults=validated_data.get('adults', 1)
+            )
+            
+            if flights:
+                return Response({
+                    'success': True,
+                    'data': flights,
+                    'message': f"Found {len(flights.get('data', []))} flights"
+                })
+            else:
+                return Response({
+                    'success': False,
+                    'data': [],
+                    'message': 'No flights found for the given criteria'
+                }, status=status.HTTP_404_NOT_FOUND)
+                
+        except Exception as e:
+            logger.error(f"Error searching flights: {e}")
+            return Response({
+                'success': False,
+                'error': 'Failed to search flights. Please try again later.'
+            }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+
+class CreateOrderView(APIView):
+    """APIView for creating a flight order."""
+    permission_classes = [IsAuthenticated, IsApprovedUser]
+    throttle_classes = [BookingThrottle]
+
+    def post(self, request):
+        serializer = CreateOrderSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        validated_data = serializer.validated_data
+        amadeus_service = AmadeusService()
+        
+        try:
+            traveler_info = {
+                'id': '1',
+                'dateOfBirth': validated_data['traveler']['date_of_birth'].isoformat(),
+                'name': {
+                    'firstName': validated_data['traveler']['first_name'],
+                    'lastName': validated_data['traveler']['last_name']
+                },
+                'gender': validated_data['traveler']['gender'],
+                'contact': {
+                    'emailAddress': validated_data['traveler']['email'],
+                    'phones': [{
+                        'deviceType': 'MOBILE',
+                        'countryCallingCode': '1',
+                        'number': validated_data['traveler']['phone']
+                    }]
+                },
+                'documents': []
+            }
+            
+            order_result = amadeus_service.create_order(
+                flight_offer=validated_data['flight_offer'],
+                traveler_info=traveler_info
+            )
+            
+            if order_result:
+                try:
+                    booking = Booking.objects.create(
+                        user=request.user,
+                        flight=Flight.objects.first(),
+                        status='confirmed',
+                        payment_status='pending'
+                    )
+                    return Response({
+                        'success': True,
+                        'data': {'amadeus_order': order_result, 'local_booking_id': booking.id},
+                        'message': 'Order created successfully'
+                    }, status=status.HTTP_201_CREATED)
+                except Exception as e:
+                    return Response({
+                        'success': True,
+                        'data': order_result,
+                        'warning': 'Order created but local booking failed'
+                    }, status=status.HTTP_201_CREATED)
+            else:
+                return Response({
+                    'success': False,
+                    'error': 'Failed to create order with Amadeus'
+                }, status=status.HTTP_400_BAD_REQUEST)
+                
+        except Exception as e:
+            logger.error(f"Error creating order: {e}")
+            return Response({
+                'success': False,
+                'error': 'Failed to create order. Please try again later.'
+            }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+
+class GetOrderView(APIView):
+    """APIView for retrieving order details."""
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [UserRateThrottle]
+
+    def get(self, request, order_id):
+        serializer = GetOrderSerializer(data={'order_id': order_id})
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        validated_order_id = serializer.validated_data['order_id']
+        amadeus_service = AmadeusService()
+        
+        try:
+            order_result = amadeus_service.get_order(validated_order_id)
+            
+            if order_result:
+                return Response({
+                    'success': True,
+                    'data': order_result,
+                    'message': 'Order retrieved successfully'
+                })
+            else:
+                return Response({
+                    'success': False,
+                    'error': 'Order not found'
+                }, status=status.HTTP_404_NOT_FOUND)
+                
+        except Exception as e:
+            logger.error(f"Error retrieving order: {e}")
+            return Response({
+                'success': False,
+                'error': 'Failed to retrieve order. Please try again later.'
+            }, status=status.HTTP_503_SERVICE_UNAVAILABLE)

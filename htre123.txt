@@ -1,0 +1,7 @@
+The application has been improved significantly and is now closer to MVP standards. The remaining tasks are:
+
+Frontend PaymentPage integration with Stripe
+Frontend handling of real API responses
+Error handling improvements
+Serializer tests
+Frontend tests

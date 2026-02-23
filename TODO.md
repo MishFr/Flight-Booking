@@ -1,13 +1,10 @@
-# Flight Search Mock Data Implementation
+# JWT Authentication Implementation
 
 ## Tasks
-- [x] Modify FlightSearchView in backend/booking/views.py to return mock flight data for testing
-- [x] Create a method to generate realistic mock flight data matching the expected API response format
-- [x] Ensure mock data includes various flight options with different prices, airlines, and routes
-- [x] Test the frontend search functionality with the mock data
+- [x] 1. Update backend/flight_booking/settings.py - Add JWT configuration
+- [x] 2. Create backend/booking/authentication.py - Custom authentication backend
+- [x] 3. Create frontend/src/api/api.js - Add axios interceptor for JWT
+- [x] 4. Update frontend/src/Features/authSlice.js - Add token refresh logic
+- [x] 5. Add logout endpoint in backend URLs
 
-## Completed
-- [x] Analyze current flight search implementation
-- [x] Plan mock data integration
-- [x] Get user approval for the plan
-- [x] Start frontend and backend servers for testing
+## Status: Completed
