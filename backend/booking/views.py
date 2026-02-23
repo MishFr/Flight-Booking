@@ -257,8 +257,8 @@ class FlightSearchView(generics.ListAPIView):
                 return None
             amadeus_client = AmadeusClient()
             flights = amadeus_client.search_flights(
-                origin_location=origin_iata,
-                destination_location=dest_iata,
+                origin=origin_iata,
+                destination=dest_iata,
                 departure_date=date_param
             )
             if flights:
