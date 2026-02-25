@@ -1,0 +1,60 @@
+services:
+  - type: web
+    name: flight-booking-backend
+    env: python
+    region: oregon
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn flight_booking.wsgi:application --bind 0.0.0.0:$PORT
+    envVars:
+      - key: DEBUG
+        value: "false"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ALLOWED_HOSTS
+        value: "your-app.onrender.com"
+      - key: USE_SQLITE
+        value: "false"
+      - key: DATABASE_URL
+        valueFrom:
+          database:
+            name: flight-booking-db
+            property: connectionString
+      - key: CACHE_MODE
+        value: "redis"
+      - key: REDIS_URL
+        valueFrom:
+          database:
+            name: flight-booking-redis
+            property: connectionString
+
+  - type: pserv
+    name: flight-booking-celery
+    env: python
+    region: oregon
+    buildCommand: pip install -r requirements.txt
+    startCommand: celery -A flight_booking worker --loglevel=info
+    envVars:
+      - key: DEBUG
+        value: "false"
+      - key: DATABASE_URL
+        valueFrom:
+          database:
+            name: flight-booking-db
+            property: connectionString
+      - key: REDIS_URL
+        valueFrom:
+          database:
+            name: flight-booking-redis
+            property: connectionString
+
+databases:
+  - name: flight-booking-db
+    plan: free
+    region: oregon
+    databaseName: flight_booking
+    user: flight_booking
+
+redis:
+  - name: flight-booking-redis
+    plan: free
+    region: oregon

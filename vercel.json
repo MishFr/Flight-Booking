@@ -1,0 +1,41 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "backend/manage.py",
+      "use": "@vercel/python",
+      "config": {
+        "runtime": "python3.9"
+      }
+    },
+    {
+      "src": "frontend/build",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "backend/manage.py"
+    },
+    {
+      "src": "/admin/(.*)",
+      "dest": "backend/manage.py"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "frontend/build/index.html"
+    }
+  ],
+  "env": {
+    "DEBUG": "false",
+    "USE_SQLITE": "false",
+    "DATABASE_NAME": "@vercel/database_name",
+    "DATABASE_USER": "@vercel/database_user",
+    "DATABASE_PASSWORD": "@vercel/database_password",
+    "DATABASE_HOST": "@vercel/database_host",
+    "DATABASE_PORT": "5432",
+    "SECRET_KEY": "@vercel_secret_key",
+    "ALLOWED_HOSTS": "your-app.vercel.app"
+  }
+}
