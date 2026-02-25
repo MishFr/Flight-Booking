@@ -64,19 +64,39 @@ class FlightSerializer(serializers.ModelSerializer):
 class BookingSerializer(serializers.ModelSerializer):
     user = CustomUserSerializer(read_only=True)
     flight = FlightSerializer(read_only=True)
-    user_id = serializers.IntegerField(write_only=True)
-    flight_id = serializers.IntegerField(write_only=True)
+    user_id = serializers.IntegerField(write_only=True, required=False)
+    flight_id = serializers.IntegerField(write_only=True, required=True)
 
     class Meta:
         model = Booking
         fields = ['id', 'user', 'flight', 'payment_status', 'created_at', 'user_id', 'flight_id']
 
     def create(self, validated_data):
-        user_id = validated_data.pop('user_id')
+        # Get flight_id from validated data (required)
         flight_id = validated_data.pop('flight_id')
-        user = CustomUser.objects.get(id=user_id)
+        
+        # Get user - first check if passed via save() from view, then fallback to context/request
+        user = validated_data.pop('user', None)
+        if not user:
+            user = self.context.get('request').user if self.context.get('request') else None
+        if not user:
+            user_id = validated_data.pop('user_id', None)
+            if user_id:
+                user = CustomUser.objects.get(id=user_id)
+        
+        # Get flight
         flight = Flight.objects.get(id=flight_id)
-        booking = Booking.objects.create(user=user, flight=flight, **validated_data)
+        
+        # Get payment_status from initial_data (not in validated_data since it's a write-only field)
+        payment_status = self.initial_data.get('payment_status', 'pending')
+        
+        # Create booking
+        booking = Booking.objects.create(
+            user=user, 
+            flight=flight, 
+            payment_status=payment_status,
+            **validated_data
+        )
         return booking
 
 # Admin Serializers

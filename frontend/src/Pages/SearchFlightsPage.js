@@ -185,8 +185,8 @@ const SearchFlightsPage = () => {
       <style>{`
         @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         .search-container { animation: fadeIn 0.8s ease-out; }
-        .search-card { background: #fff; border-radius: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08); overflow: hidden; }
-        .search-tabs { display: flex; border-bottom: 1px solid #e0e0e0; background: #f8f9fa; }
+        .search-card { background: linear-gradient(rgba(0, 40, 85, 0.85), rgba(0, 40, 85, 0.7)), url('https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=1200&q=80'); background-size: cover; background-position: center; border-radius: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08); overflow: hidden; }
+        .search-tabs { display: flex; border-bottom: 1px solid rgba(255, 255, 255, 0.2); background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); }
         .search-tab { flex: 1; padding: 16px 24px; border: none; background: transparent; cursor: pointer; font-size: 15px; font-weight: 600; color: #666; transition: all 0.3s ease; position: relative; }
         .search-tab:hover { background: #fff; color: #002855; }
         .search-tab.active { background: #fff; color: #002855; }
