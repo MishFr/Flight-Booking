@@ -1,4 +1,4 @@
-// frontend/src/App.js
+// src/App.js
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 
@@ -53,4 +53,3 @@ function App() {
 }
 
 export default App;
-

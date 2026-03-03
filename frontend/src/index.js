@@ -1,4 +1,4 @@
-// src/index.js
+// frontend/src/index.js - Entry point for React app
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';

@@ -1,4 +1,4 @@
-// frontend/src/store.js
+// src/app/store.js
 import { configureStore } from '@reduxjs/toolkit';
 // Import slices here (e.g., authSlice, flightSlice)
 import authReducer from './Features/authSlice';
@@ -21,4 +21,3 @@ export const store = configureStore({
     // add other slices here
   },
 });
-
