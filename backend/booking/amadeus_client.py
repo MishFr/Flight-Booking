@@ -52,3 +52,54 @@ class AmadeusClient:
         url = f"{self.base_url}/v1/reference-data/locations"
         response = requests.get(url, headers=headers, params=params, timeout=30)
         return response.json() if response.status_code == 200 else None
+
+    def search_hotels(self, city_code, check_in, check_out, guests=1, room_count=1):
+        """Search for hotels by city code using Amadeus Hotel Search API"""
+        token = self.get_access_token()
+        headers = {'Authorization': f'Bearer {token}'}
+        params = {
+            'cityCode': city_code,
+            'checkInDate': check_in,
+            'checkOutDate': check_out,
+            'adults': guests,
+            'roomQuantity': room_count,
+            'radius': 50,
+            'radiusUnit': 'KM',
+            'hotelSource': 'ALL'
+        }
+        url = f"{self.base_url}/v2/shopping/hotel-offers"
+        response = requests.get(url, headers=headers, params=params, timeout=30)
+        if response.status_code == 200:
+            return response.json()
+        return None
+
+    def search_hotels_by_geocode(self, latitude, longitude, check_in, check_out, guests=1, room_count=1):
+        """Search for hotels by geolocation (latitude/longitude)"""
+        token = self.get_access_token()
+        headers = {'Authorization': f'Bearer {token}'}
+        params = {
+            'latitude': latitude,
+            'longitude': longitude,
+            'checkInDate': check_in,
+            'checkOutDate': check_out,
+            'adults': guests,
+            'roomQuantity': room_count,
+            'radius': 50,
+            'radiusUnit': 'KM',
+            'hotelSource': 'ALL'
+        }
+        url = f"{self.base_url}/v2/shopping/hotel-offers"
+        response = requests.get(url, headers=headers, params=params, timeout=30)
+        if response.status_code == 200:
+            return response.json()
+        return None
+
+    def get_hotel_details(self, hotel_id):
+        """Get detailed information about a specific hotel"""
+        token = self.get_access_token()
+        headers = {'Authorization': f'Bearer {token}'}
+        url = f"{self.base_url}/v1/shopping/hotel-offers/{hotel_id}"
+        response = requests.get(url, headers=headers, timeout=30)
+        if response.status_code == 200:
+            return response.json()
+        return None

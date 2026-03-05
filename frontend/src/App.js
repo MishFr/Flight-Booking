@@ -1,6 +1,7 @@
 // frontend/src/App.js
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
+import './styles.css';
 
 // our imported pages are here
 import Header from './Components/Header';
@@ -18,6 +19,7 @@ import AccommodationPage from './Pages/AccommodationPage';
 import PaymentPage from './Pages/PaymentPage';
 import MagazinePage from './Pages/MagazinePage';
 import MarketplacePage from './Pages/MarketplacePage';
+import VendorsCornerPage from './Pages/VendorsCornerPage';
 import AdminDashboardPage from './Pages/AdminDashboardPage';
 import AdminUsersPage from './Pages/AdminUsersPage';
 import AdminFlightsPage from './Pages/AdminFlightsPage';
@@ -42,7 +44,8 @@ function App() {
         <Route path="/special-offers" element={<SpecialOffersPage />} />
         <Route path="/accommodation" element={<AccommodationPage />} />
         <Route path="/magazine" element={<MagazinePage />} />
-        <Route path="/marketplace" element={<MarketplacePage />} />
+<Route path="/marketplace" element={<MarketplacePage />} />
+        <Route path="/vendors-corner" element={<VendorsCornerPage />} />
         <Route path="/payment" element={<PaymentPage />} />
         <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
         <Route path="/admin/users" element={<AdminUsersPage />} />

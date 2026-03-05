@@ -74,7 +74,7 @@ const RegisterPage = () => {
   useEffect(() => {
     const interval = setInterval(() => {
       setBgImageIndex((prevIndex) => (prevIndex + 1) % bgImages.length);
-    }, 5000); // Change every 5 seconds
+    }, 5000);
     return () => clearInterval(interval);
   }, [bgImages.length]);
 
@@ -84,7 +84,7 @@ const RegisterPage = () => {
       setCardImageIndices((prevIndices) =>
         prevIndices.map((index, i) => (index + 1) % cardImages[i].length)
       );
-    }, 3000); // Change every 3 seconds
+    }, 3000);
     return () => clearInterval(interval);
   }, [cardImages]);
 
@@ -106,14 +106,11 @@ const RegisterPage = () => {
       alert('Passwords do not match');
       return;
     }
-    // Remove confirmPassword before sending to backend
     const { confirmPassword, ...userData } = formData;
-    // Set username to email for backend compatibility
     userData.username = formData.email;
     dispatch(registerUser(userData));
   };
 
-  // Clear form after successful registration
   React.useEffect(() => {
     if (successMessage) {
       setFormData({
@@ -145,143 +142,12 @@ const RegisterPage = () => {
 
   return (
     <>
-      <style>
-        {`
-          @keyframes fadeInUp {
-            from {
-              opacity: 0;
-              transform: translateY(30px);
-            }
-            to {
-              opacity: 1;
-              transform: translateY(0);
-            }
-          }
-          @keyframes slideIn {
-            from {
-              transform: translateX(-100%);
-              opacity: 0;
-            }
-            to {
-              transform: translateX(0);
-              opacity: 1;
-            }
-          }
-          @keyframes float {
-            0% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
-            100% { transform: translateY(0px); }
-          }
-          
-          .register-container {
-            animation: fadeInUp 0.8s ease-out;
-            background: rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-          }
-          
-          .form-group {
-            animation: slideIn 0.6s ease-out;
-            animation-fill-mode: both;
-          }
-          .form-group:nth-child(1) { animation-delay: 0.1s; }
-          .form-group:nth-child(2) { animation-delay: 0.2s; }
-          .form-group:nth-child(3) { animation-delay: 0.3s; }
-          .form-group:nth-child(4) { animation-delay: 0.4s; }
-          
-          .submit-btn {
-            animation: fadeInUp 0.8s ease-out 0.5s both;
-            background: linear-gradient(45deg, #FF512F 0%, #DD2476 100%);
-            transition: all 0.3s ease;
-            border: none;
-            position: relative;
-            overflow: hidden;
-            z-index: 1;
-          }
-          
-          .submit-btn::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 0%;
-            height: 100%;
-            background: linear-gradient(45deg, #DD2476 0%, #FF512F 100%);
-            transition: width 0.3s ease;
-            z-index: -1;
-          }
-          
-          .submit-btn:hover::before {
-            width: 100%;
-          }
-          
-          .submit-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(221, 36, 118, 0.4);
-          }
-          
-          .message {
-            animation: fadeInUp 0.8s ease-out;
-            margin-top: 20px;
-            padding: 12px 16px;
-            border-radius: 8px;
-            text-align: center;
-            font-weight: 500;
-            backdrop-filter: blur(10px);
-          }
-          
-          .success-message {
-            background: rgba(40, 167, 69, 0.2);
-            color: #d4edda;
-            border: 1px solid rgba(40, 167, 69, 0.3);
-          }
-          
-          .error-message {
-            background: rgba(220, 53, 69, 0.2);
-            color: #f8d7da;
-            border: 1px solid rgba(220, 53, 69, 0.3);
-          }
-          
-          .input-field {
-            transition: all 0.3s ease;
-            background: rgba(255, 255, 255, 0.9);
-          }
-          
-          .input-field:focus {
-            border-color: #DD2476 !important;
-            box-shadow: 0 0 0 3px rgba(221, 36, 118, 0.2) !important;
-            background: #ffffff;
-          }
-          
-          .feature-card {
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            cursor: pointer;
-          }
-          
-          .feature-card:hover {
-            transform: translateY(-10px) scale(1.02);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-            z-index: 10;
-          }
-
-          .footer-link {
-            color: rgba(255, 255, 255, 0.7);
-            text-decoration: none;
-            transition: all 0.3s ease;
-            display: block;
-            margin-bottom: 8px;
-            cursor: pointer;
-          }
-
-          .footer-link:hover {
-            color: #fff;
-            transform: translateX(5px);
-            text-shadow: 0 0 10px rgba(255,255,255,0.5);
-          }
-        `}
-      </style>
+      <style>{`
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(30px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
       <div style={{
         minHeight: '100vh',
         display: 'flex',
@@ -293,11 +159,12 @@ const RegisterPage = () => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontFamily: "'Poppins', sans-serif",
+          fontFamily: "'Inter', sans-serif",
           overflow: 'hidden',
           paddingTop: '80px',
           paddingBottom: '40px'
         }}>
+          {/* Background Image */}
           <img
             src={bgImages[bgImageIndex]}
             alt="Travel destination"
@@ -309,29 +176,39 @@ const RegisterPage = () => {
               height: '100%',
               objectFit: 'cover',
               zIndex: -1,
-              filter: 'brightness(0.7)',
-              transition: 'opacity 1s ease-in-out, transform 1s ease-in-out, filter 1s ease-in-out',
-              transform: 'scale(1) rotate(0deg)',
-              borderRadius: '0px'
+              filter: 'brightness(0.6)',
+              transition: 'opacity 1s ease-in-out',
             }}
           />
 
+          {/* Luxury Navy Overlay */}
           <div style={{
             position: 'absolute',
-            top: '80px',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'linear-gradient(180deg, rgba(10, 22, 40, 0.75) 0%, rgba(10, 22, 40, 0.9) 100%)',
+            zIndex: 0
+          }}></div>
+
+          {/* Search Bar */}
+          <div style={{
+            position: 'absolute',
+            top: '100px',
             left: '50%',
             transform: 'translateX(-50%)',
             zIndex: 10,
             background: 'rgba(255, 255, 255, 0.95)',
-            borderRadius: '15px',
+            borderRadius: '16px',
             padding: '20px',
-            boxShadow: '0 8px 32px rgba(31, 38, 135, 0.37)',
-            backdropFilter: 'blur(10px)',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
-            maxWidth: '800px',
-            width: '90%'
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(212, 175, 55, 0.3)',
+            maxWidth: '900px',
+            width: '92%'
           }}>
-            <form onSubmit={handleSearchSubmit} style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center' }}>
+            <form onSubmit={handleSearchSubmit} style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center' }}>
               <input
                 type="text"
                 name="from"
@@ -339,7 +216,7 @@ const RegisterPage = () => {
                 onChange={handleSearchInputChange}
                 placeholder="From"
                 required
-                style={{ padding: '10px', border: '1px solid #ddd', borderRadius: '5px', flex: 1, minWidth: '120px' }}
+                style={{ padding: '12px', border: '2px solid #E9ECEF', borderRadius: '10px', flex: 1, minWidth: '130px', fontSize: '14px' }}
               />
               <input
                 type="text"
@@ -348,7 +225,7 @@ const RegisterPage = () => {
                 onChange={handleSearchInputChange}
                 placeholder="To"
                 required
-                style={{ padding: '10px', border: '1px solid #ddd', borderRadius: '5px', flex: 1, minWidth: '120px' }}
+                style={{ padding: '12px', border: '2px solid #E9ECEF', borderRadius: '10px', flex: 1, minWidth: '130px', fontSize: '14px' }}
               />
               <input
                 type="date"
@@ -356,13 +233,13 @@ const RegisterPage = () => {
                 value={searchData.departureDate}
                 onChange={handleSearchInputChange}
                 required
-                style={{ padding: '10px', border: '1px solid #ddd', borderRadius: '5px', flex: 1, minWidth: '120px' }}
+                style={{ padding: '12px', border: '2px solid #E9ECEF', borderRadius: '10px', flex: 1, minWidth: '130px', fontSize: '14px' }}
               />
               <select
                 name="passengers"
                 value={searchData.passengers}
                 onChange={handleSearchInputChange}
-                style={{ padding: '10px', border: '1px solid #ddd', borderRadius: '5px', flex: 1, minWidth: '120px' }}
+                style={{ padding: '12px', border: '2px solid #E9ECEF', borderRadius: '10px', flex: 1, minWidth: '130px', fontSize: '14px' }}
               >
                 <option value={1}>1 Passenger</option>
                 <option value={2}>2 Passengers</option>
@@ -374,28 +251,30 @@ const RegisterPage = () => {
                 type="submit"
                 disabled={flightsLoading}
                 style={{
-                  padding: '10px 20px',
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  padding: '12px 24px',
+                  background: 'linear-gradient(135deg, #0A1628 0%, #1a365d 100%)',
                   color: 'white',
                   border: 'none',
-                  borderRadius: '5px',
+                  borderRadius: '10px',
                   cursor: 'pointer',
-                  fontWeight: 'bold'
+                  fontWeight: '600',
+                  fontSize: '14px'
                 }}
               >
-                {flightsLoading ? 'Searching...' : 'Search Flights'}
+                {flightsLoading ? '...' : 'Search'}
               </button>
               <button
                 type="button"
                 onClick={() => setShowForm(true)}
                 style={{
-                  padding: '10px 20px',
-                  background: 'linear-gradient(45deg, #FF512F 0%, #DD2476 100%)',
-                  color: 'white',
+                  padding: '12px 24px',
+                  background: 'linear-gradient(135deg, #D4AF37 0%, #FFD700 100%)',
+                  color: '#0A1628',
                   border: 'none',
-                  borderRadius: '5px',
+                  borderRadius: '10px',
                   cursor: 'pointer',
-                  fontWeight: 'bold'
+                  fontWeight: '700',
+                  fontSize: '14px'
                 }}
               >
                 Register
@@ -404,13 +283,14 @@ const RegisterPage = () => {
                 type="button"
                 onClick={() => navigate('/login')}
                 style={{
-                  padding: '10px 20px',
-                  background: 'linear-gradient(45deg, #4CAF50 0%, #45a049 100%)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '5px',
+                  padding: '12px 24px',
+                  background: 'transparent',
+                  color: '#0A1628',
+                  border: '2px solid #0A1628',
+                  borderRadius: '10px',
                   cursor: 'pointer',
-                  fontWeight: 'bold'
+                  fontWeight: '600',
+                  fontSize: '14px'
                 }}
               >
                 Login
@@ -423,28 +303,32 @@ const RegisterPage = () => {
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              gap: '20px',
+              gap: '24px',
               padding: '20px',
-              maxWidth: '1200px',
-              width: '100%'
+              maxWidth: '1300px',
+              width: '100%',
+              position: 'relative',
+              zIndex: 1
             }}>
               <h1 style={{ 
                 color: 'white', 
                 textAlign: 'center', 
                 fontSize: '3.5em', 
                 fontWeight: '700',
-                textShadow: '2px 2px 4px rgba(0,0,0,0.5)',
-                marginBottom: '10px',
+                fontFamily: "'Playfair Display', serif",
+                textShadow: '0 4px 30px rgba(0, 0, 0, 0.5)',
+                marginBottom: '12px',
                 animation: 'fadeInUp 0.8s ease-out'
               }}>
-                Join Our Community
+                Join Our <span style={{ color: '#D4AF37' }}>Community</span>
               </h1>
               <p style={{ 
-                color: 'rgba(255, 255, 255, 0.9)', 
+                color: 'rgba(255, 255, 255, 0.85)', 
                 textAlign: 'center', 
-                fontSize: '1.3em', 
+                fontSize: '1.4em', 
                 marginBottom: '50px',
                 maxWidth: '800px',
+                fontFamily: "'Inter', sans-serif",
                 animation: 'fadeInUp 0.8s ease-out 0.2s both'
               }}>
                 Discover amazing business and entertainment options for your travels.
@@ -495,17 +379,30 @@ const RegisterPage = () => {
                 ].map((card, index) => (
                   <div
                     key={index}
-                    className="feature-card"
                     onClick={() => handleCardClick(card.link)}
                     style={{
-                      backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                      backgroundColor: 'rgba(255, 255, 255, 0.95)',
                       borderRadius: '20px',
                       overflow: 'hidden',
-                      width: '250px',
+                      width: '260px',
+                      boxShadow: '0 16px 48px rgba(0, 0, 0, 0.3)',
+                      border: '1px solid rgba(212, 175, 55, 0.2)',
+                      cursor: 'pointer',
+                      transition: 'all 0.4s ease',
                       animation: `fadeInUp 0.8s ease-out ${card.delay} both`,
                     }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-12px) scale(1.02)';
+                      e.currentTarget.style.boxShadow = '0 24px 64px rgba(0, 0, 0, 0.4)';
+                      e.currentTarget.style.borderColor = '#D4AF37';
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                      e.currentTarget.style.boxShadow = '0 16px 48px rgba(0, 0, 0, 0.3)';
+                      e.currentTarget.style.borderColor = 'rgba(212, 175, 55, 0.2)';
+                    }}
                   >
-                    <div style={{ overflow: 'hidden', height: '200px' }}>
+                    <div style={{ overflow: 'hidden', height: '180px' }}>
                       <img
                         src={cardImages[index][cardImageIndices[index]]}
                         alt={card.title}
@@ -513,23 +410,21 @@ const RegisterPage = () => {
                           width: '100%',
                           height: '100%',
                           objectFit: 'cover',
-                          transition: 'transform 0.5s ease, opacity 1s ease-in-out'
+                          transition: 'transform 0.5s ease'
                         }}
-                        onMouseOver={(e) => e.target.style.transform = 'scale(1.1)'}
-                        onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
                       />
                     </div>
-                    <div style={{ padding: '25px' }}>
-                      <h3 style={{ color: '#1a202c', marginBottom: '10px', fontSize: '1.4em' }}>{card.title}</h3>
-                      <p style={{ color: '#4a5568', lineHeight: '1.6', fontSize: '0.95em' }}>{card.desc}</p>
+                    <div style={{ padding: '24px' }}>
+                      <h3 style={{ color: '#0A1628', marginBottom: '12px', fontSize: '1.4em', fontFamily: "'Playfair Display', serif", fontWeight: 600 }}>{card.title}</h3>
+                      <p style={{ color: '#495057', lineHeight: '1.6', fontSize: '0.95em' }}>{card.desc}</p>
                       <div style={{ 
-                        marginTop: '15px', 
-                        color: '#DD2476', 
-                        fontWeight: 'bold', 
+                        marginTop: '16px', 
+                        color: '#D4AF37', 
+                        fontWeight: '700', 
                         fontSize: '0.9em',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '5px'
+                        gap: '6px'
                       }}>
                         Explore More <span>→</span>
                       </div>
@@ -541,26 +436,27 @@ const RegisterPage = () => {
               <button
                 onClick={() => setShowForm(true)}
                 style={{
-                  padding: '18px 40px',
-                  background: 'linear-gradient(45deg, #FF512F 0%, #DD2476 100%)',
-                  color: 'white',
+                  padding: '18px 48px',
+                  background: 'linear-gradient(135deg, #D4AF37 0%, #FFD700 50%, #B8860B 100%)',
+                  color: '#0A1628',
                   border: 'none',
                   borderRadius: '50px',
-                  fontSize: '1.3em',
-                  fontWeight: 'bold',
+                  fontSize: '1.2em',
+                  fontWeight: '700',
                   cursor: 'pointer',
                   marginTop: '60px',
-                  boxShadow: '0 10px 20px rgba(221, 36, 118, 0.3)',
+                  boxShadow: '0 8px 30px rgba(212, 175, 55, 0.4)',
                   transition: 'all 0.3s ease',
-                  animation: 'fadeInUp 0.8s ease-out 1s both'
+                  animation: 'fadeInUp 0.8s ease-out 1s both',
+                  letterSpacing: '0.5px'
                 }}
                 onMouseOver={(e) => {
                   e.target.style.transform = 'translateY(-3px)';
-                  e.target.style.boxShadow = '0 15px 30px rgba(221, 36, 118, 0.4)';
+                  e.target.style.boxShadow = '0 12px 40px rgba(212, 175, 55, 0.6)';
                 }}
                 onMouseOut={(e) => {
                   e.target.style.transform = 'translateY(0)';
-                  e.target.style.boxShadow = '0 10px 20px rgba(221, 36, 118, 0.3)';
+                  e.target.style.boxShadow = '0 8px 30px rgba(212, 175, 55, 0.4)';
                 }}
               >
                 Register Now
@@ -568,128 +464,179 @@ const RegisterPage = () => {
             </div>
           ) : (
             <div className="register-container" style={{
-              maxWidth: '480px',
+              maxWidth: '500px',
               width: '100%',
-              padding: '40px',
-              borderRadius: '24px',
-              margin: '20px'
+              padding: '48px',
+              borderRadius: '28px',
+              margin: '20px',
+              position: 'relative',
+              zIndex: 1,
+              background: 'rgba(10, 22, 40, 0.9)',
+              backdropFilter: 'blur(30px)',
+              border: '1px solid rgba(212, 175, 55, 0.3)',
+              boxShadow: '0 24px 64px rgba(0, 0, 0, 0.4)'
             }}>
+              {/* Gold Top Bar */}
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                width: '80px',
+                height: '3px',
+                background: 'linear-gradient(90deg, transparent, #D4AF37, transparent)',
+                borderRadius: '0 0 4px 4px'
+              }}></div>
+              
               <h2 style={{ 
                 textAlign: 'center', 
-                marginBottom: '30px', 
+                marginBottom: '36px', 
                 color: 'white',
-                fontSize: '2em',
-                fontWeight: '700'
+                fontSize: '2.2em',
+                fontWeight: '700',
+                fontFamily: "'Playfair Display', serif"
               }}>Create Account</h2>
               
               <form onSubmit={handleSubmit}>
                 <div className="form-group" style={{ marginBottom: '20px' }}>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#333' }}>Username</label>
-                  <input
-                    type="text"
-                    name="username"
-                    value={formData.username}
-                    onChange={handleInputChange}
-                    required
-                    className="input-field"
-                    style={{
-                      width: '100%',
-                      padding: '14px',
-                      border: '2px solid transparent',
-                      borderRadius: '12px',
-                      fontSize: '16px',
-                    }}
-                  />
-                </div>
-                <div className="form-group" style={{ marginBottom: '20px' }}>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#333' }}>Email</label>
+                  <label style={{ display: 'block', marginBottom: '10px', fontWeight: '600', color: 'white', fontSize: '14px', letterSpacing: '0.5px' }}>Email</label>
                   <input
                     type="email"
                     name="email"
                     value={formData.email}
                     onChange={handleInputChange}
                     required
-                    className="input-field"
                     style={{
                       width: '100%',
-                      padding: '14px',
-                      border: '2px solid transparent',
+                      padding: '16px',
+                      border: '2px solid rgba(255, 255, 255, 0.2)',
                       borderRadius: '12px',
                       fontSize: '16px',
+                      background: 'rgba(255, 255, 255, 0.1)',
+                      color: 'white',
+                      transition: 'all 0.3s ease'
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = '#D4AF37';
+                      e.target.style.boxShadow = '0 0 0 4px rgba(212, 175, 55, 0.15)';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                      e.target.style.boxShadow = 'none';
                     }}
                   />
                 </div>
-                <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+                <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
                   <div className="form-group" style={{ flex: 1 }}>
-                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#333' }}>First Name</label>
+                    <label style={{ display: 'block', marginBottom: '10px', fontWeight: '600', color: 'white', fontSize: '14px', letterSpacing: '0.5px' }}>First Name</label>
                     <input
                       type="text"
                       name="first_name"
                       value={formData.first_name}
                       onChange={handleInputChange}
                       required
-                      className="input-field"
                       style={{
                         width: '100%',
-                        padding: '14px',
-                        border: '2px solid transparent',
+                        padding: '16px',
+                        border: '2px solid rgba(255, 255, 255, 0.2)',
                         borderRadius: '12px',
                         fontSize: '16px',
+                        background: 'rgba(255, 255, 255, 0.1)',
+                        color: 'white',
+                        transition: 'all 0.3s ease'
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = '#D4AF37';
+                        e.target.style.boxShadow = '0 0 0 4px rgba(212, 175, 55, 0.15)';
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                        e.target.style.boxShadow = 'none';
                       }}
                     />
                   </div>
                   <div className="form-group" style={{ flex: 1 }}>
-                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#333' }}>Last Name</label>
+                    <label style={{ display: 'block', marginBottom: '10px', fontWeight: '600', color: 'white', fontSize: '14px', letterSpacing: '0.5px' }}>Last Name</label>
                     <input
                       type="text"
                       name="last_name"
                       value={formData.last_name}
                       onChange={handleInputChange}
                       required
-                      className="input-field"
                       style={{
                         width: '100%',
-                        padding: '14px',
-                        border: '2px solid transparent',
+                        padding: '16px',
+                        border: '2px solid rgba(255, 255, 255, 0.2)',
                         borderRadius: '12px',
                         fontSize: '16px',
+                        background: 'rgba(255, 255, 255, 0.1)',
+                        color: 'white',
+                        transition: 'all 0.3s ease'
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = '#D4AF37';
+                        e.target.style.boxShadow = '0 0 0 4px rgba(212, 175, 55, 0.15)';
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                        e.target.style.boxShadow = 'none';
                       }}
                     />
                   </div>
                 </div>
                 <div className="form-group" style={{ marginBottom: '20px' }}>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#333' }}>Password</label>
+                  <label style={{ display: 'block', marginBottom: '10px', fontWeight: '600', color: 'white', fontSize: '14px', letterSpacing: '0.5px' }}>Password</label>
                   <input
                     type="password"
                     name="password"
                     value={formData.password}
                     onChange={handleInputChange}
                     required
-                    className="input-field"
                     style={{
                       width: '100%',
-                      padding: '14px',
-                      border: '2px solid transparent',
+                      padding: '16px',
+                      border: '2px solid rgba(255, 255, 255, 0.2)',
                       borderRadius: '12px',
                       fontSize: '16px',
+                      background: 'rgba(255, 255, 255, 0.1)',
+                      color: 'white',
+                      transition: 'all 0.3s ease'
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = '#D4AF37';
+                      e.target.style.boxShadow = '0 0 0 4px rgba(212, 175, 55, 0.15)';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                      e.target.style.boxShadow = 'none';
                     }}
                   />
                 </div>
-                <div className="form-group" style={{ marginBottom: '30px' }}>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#333' }}>Confirm Password</label>
+                <div className="form-group" style={{ marginBottom: '32px' }}>
+                  <label style={{ display: 'block', marginBottom: '10px', fontWeight: '600', color: 'white', fontSize: '14px', letterSpacing: '0.5px' }}>Confirm Password</label>
                   <input
                     type="password"
                     name="confirmPassword"
                     value={formData.confirmPassword}
                     onChange={handleInputChange}
                     required
-                    className="input-field"
                     style={{
                       width: '100%',
-                      padding: '14px',
-                      border: '2px solid transparent',
+                      padding: '16px',
+                      border: '2px solid rgba(255, 255, 255, 0.2)',
                       borderRadius: '12px',
                       fontSize: '16px',
+                      background: 'rgba(255, 255, 255, 0.1)',
+                      color: 'white',
+                      transition: 'all 0.3s ease'
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = '#D4AF37';
+                      e.target.style.boxShadow = '0 0 0 4px rgba(212, 175, 55, 0.15)';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                      e.target.style.boxShadow = 'none';
                     }}
                   />
                 </div>
@@ -697,28 +644,68 @@ const RegisterPage = () => {
                 <button
                   type="submit"
                   disabled={loading || !!successMessage}
-                  className="submit-btn"
                   style={{
                     width: '100%',
-                    padding: '16px',
-                    color: 'white',
+                    padding: '18px',
+                    background: 'linear-gradient(135deg, #D4AF37 0%, #FFD700 50%, #B8860B 100%)',
+                    color: '#0A1628',
+                    border: 'none',
                     borderRadius: '12px',
                     fontSize: '18px',
-                    fontWeight: '600',
+                    fontWeight: '700',
                     cursor: loading || !!successMessage ? 'not-allowed' : 'pointer',
-                    marginBottom: '20px'
+                    marginBottom: '24px',
+                    transition: 'all 0.3s ease',
+                    letterSpacing: '0.5px',
+                    boxShadow: '0 4px 20px rgba(212, 175, 55, 0.3)'
+                  }}
+                  onMouseOver={(e) => {
+                    if (!loading && !successMessage) {
+                      e.target.style.transform = 'translateY(-2px)';
+                      e.target.style.boxShadow = '0 8px 30px rgba(212, 175, 55, 0.5)';
+                    }
+                  }}
+                  onMouseOut={(e) => {
+                    e.target.style.transform = 'translateY(0)';
+                    e.target.style.boxShadow = '0 4px 20px rgba(212, 175, 55, 0.3)';
                   }}
                 >
                   {loading ? 'Creating Account...' : successMessage ? 'Registration Submitted' : 'Register'}
                 </button>
               </form>
               
-              {error && <div className="message error-message">{error}</div>}
-              {successMessage && <div className="message success-message">{successMessage}</div>}
+              {error && (
+                <div style={{
+                  backgroundColor: 'rgba(225, 29, 72, 0.15)',
+                  color: '#fca5a5',
+                  padding: '14px',
+                  borderRadius: '10px',
+                  marginBottom: '20px',
+                  border: '1px solid rgba(225, 29, 72, 0.3)',
+                  fontSize: '14px',
+                  textAlign: 'center'
+                }}>
+                  {error}
+                </div>
+              )}
+              {successMessage && (
+                <div style={{
+                  backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                  color: '#86efac',
+                  padding: '14px',
+                  borderRadius: '10px',
+                  marginBottom: '20px',
+                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                  fontSize: '14px',
+                  textAlign: 'center'
+                }}>
+                  {successMessage}
+                </div>
+              )}
               
-              <div style={{ textAlign: 'center', marginTop: '20px' }}>
-                <p style={{ color: 'rgba(255,255,255,0.8)', marginBottom: '10px' }}>
-                  Already have an account? <Link to="/login" style={{ color: '#fff', fontWeight: 'bold', textDecoration: 'underline' }}>Login here</Link>
+              <div style={{ textAlign: 'center', marginTop: '24px' }}>
+                <p style={{ color: 'rgba(255,255,255,0.7)', marginBottom: '12px', fontSize: '15px' }}>
+                  Already have an account? <Link to="/login" style={{ color: '#D4AF37', fontWeight: 'bold', textDecoration: 'none', borderBottom: '1px solid #D4AF37' }}>Login here</Link>
                 </p>
                 <button
                   onClick={() => setShowForm(false)}
@@ -727,11 +714,12 @@ const RegisterPage = () => {
                     color: 'rgba(255,255,255,0.7)',
                     border: 'none',
                     cursor: 'pointer',
-                    fontSize: '0.9em',
+                    fontSize: '0.95em',
                     textDecoration: 'none',
-                    padding: '5px'
+                    padding: '8px',
+                    transition: 'color 0.3s ease'
                   }}
-                  onMouseOver={(e) => e.target.style.color = 'white'}
+                  onMouseOver={(e) => e.target.style.color = '#D4AF37'}
                   onMouseOut={(e) => e.target.style.color = 'rgba(255,255,255,0.7)'}
                 >
                   ← Back to Features
@@ -741,11 +729,14 @@ const RegisterPage = () => {
           )}
         </div>
         
+        {/* Footer */}
         <div style={{
-          backgroundColor: 'rgba(0, 0, 0, 0.9)',
+          backgroundColor: 'rgba(10, 22, 40, 0.95)',
           color: 'white',
           padding: '60px 20px',
-          borderTop: '1px solid rgba(255,255,255,0.1)'
+          borderTop: '1px solid rgba(212, 175, 55, 0.2)',
+          position: 'relative',
+          zIndex: 1
         }}>
           <div style={{ 
             display: 'flex', 
@@ -756,7 +747,7 @@ const RegisterPage = () => {
             gap: '40px'
           }}>
             <div>
-              <h4 style={{ fontSize: '1.2em', marginBottom: '20px', color: '#DD2476' }}>Company</h4>
+              <h4 style={{ fontSize: '1.2em', marginBottom: '20px', color: '#D4AF37', fontFamily: "'Playfair Display', serif" }}>Company</h4>
               <ul style={{ listStyle: 'none', padding: 0 }}>
                 <li><span className="footer-link">About Us</span></li>
                 <li><span className="footer-link">Careers</span></li>
@@ -764,7 +755,7 @@ const RegisterPage = () => {
               </ul>
             </div>
             <div>
-              <h4 style={{ fontSize: '1.2em', marginBottom: '20px', color: '#DD2476' }}>Platform</h4>
+              <h4 style={{ fontSize: '1.2em', marginBottom: '20px', color: '#D4AF37', fontFamily: "'Playfair Display', serif" }}>Platform</h4>
               <ul style={{ listStyle: 'none', padding: 0 }}>
                 <li><span className="footer-link">API</span></li>
                 <li><span className="footer-link">Integrations</span></li>
@@ -772,7 +763,7 @@ const RegisterPage = () => {
               </ul>
             </div>
             <div>
-              <h4 style={{ fontSize: '1.2em', marginBottom: '20px', color: '#DD2476' }}>Features</h4>
+              <h4 style={{ fontSize: '1.2em', marginBottom: '20px', color: '#D4AF37', fontFamily: "'Playfair Display', serif" }}>Features</h4>
               <ul style={{ listStyle: 'none', padding: 0 }}>
                 <li><Link to="/search-flights" className="footer-link">Search Flights</Link></li>
                 <li><Link to="/search-flights" className="footer-link">Book Tickets</Link></li>
@@ -780,7 +771,7 @@ const RegisterPage = () => {
               </ul>
             </div>
             <div>
-              <h4 style={{ fontSize: '1.2em', marginBottom: '20px', color: '#DD2476' }}>Discover</h4>
+              <h4 style={{ fontSize: '1.2em', marginBottom: '20px', color: '#D4AF37', fontFamily: "'Playfair Display', serif" }}>Discover</h4>
               <ul style={{ listStyle: 'none', padding: 0 }}>
                 <li><Link to="/travel-insights" className="footer-link">Travel Tips</Link></li>
                 <li><Link to="/search-flights" className="footer-link">Destinations</Link></li>
@@ -795,14 +786,14 @@ const RegisterPage = () => {
             borderTop: '1px solid rgba(255,255,255,0.1)',
             paddingTop: '30px'
           }}>
-            <h4 style={{ marginBottom: '20px', fontWeight: 'normal', color: 'rgba(255,255,255,0.6)' }}>Follow Us</h4>
+            <h4 style={{ marginBottom: '20px', fontWeight: 'normal', color: 'rgba(255,255,255,0.6)', fontFamily: "'Playfair Display', serif" }}>Follow Us</h4>
             <div style={{ display: 'flex', justifyContent: 'center', gap: '20px' }}>
               <a href="https://www.tiktok.com" target="_blank" rel="noopener noreferrer" className="footer-link" style={{ fontSize: '1.1em' }}>TikTok</a>
               <a href="https://www.facebook.com" target="_blank" rel="noopener noreferrer" className="footer-link" style={{ fontSize: '1.1em' }}>Facebook</a>
               <a href="https://www.x.com" target="_blank" rel="noopener noreferrer" className="footer-link" style={{ fontSize: '1.1em' }}>X</a>
             </div>
             <p style={{ marginTop: '30px', color: 'rgba(255,255,255,0.4)', fontSize: '0.9em' }}>
-              © 2026 Flight Booking System. All rights reserved.
+              © 2026 AirZambia. All rights reserved.
             </p>
           </div>
         </div>
@@ -812,3 +803,4 @@ const RegisterPage = () => {
 };
 
 export default RegisterPage;
+

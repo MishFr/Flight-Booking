@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { searchHotels } from '../api/api';
 
 const AccommodationPage = () => {
   const navigate = useNavigate();
@@ -9,79 +10,124 @@ const AccommodationPage = () => {
   const [guests, setGuests] = useState(1);
   const [accommodations, setAccommodations] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [userLocation, setUserLocation] = useState(null);
+  const [isDemo, setIsDemo] = useState(false);
+  const [locationStatus, setLocationStatus] = useState('idle'); // idle, detecting, detected, denied
 
   // Get user's current location for localized search
   useEffect(() => {
+    detectUserLocation();
+  }, []);
+
+  // Auto-search when location is detected
+  useEffect(() => {
+    if (userLocation && locationStatus === 'detected') {
+      // Auto-search for nearby hotels when location is detected
+      handleNearbySearch();
+    }
+  }, [userLocation, locationStatus]);
+
+  const detectUserLocation = () => {
     if (navigator.geolocation) {
+      setLocationStatus('detecting');
+      
       navigator.geolocation.getCurrentPosition(
         (position) => {
           setUserLocation({
             lat: position.coords.latitude,
             lng: position.coords.longitude
           });
+          setLocationStatus('detected');
         },
         (error) => {
           console.log('Error getting location:', error);
+          setLocationStatus('denied');
         }
       );
+    } else {
+      setLocationStatus('denied');
     }
-  }, []);
+  };
 
   const handleSearch = async () => {
     if (!location.trim()) return;
 
     setLoading(true);
-    try {
-      // Mock API call - replace with actual accommodation API
-      const mockAccommodations = [
-        {
-          id: 1,
-          name: 'Luxury Hotel Downtown',
-          location: location,
-          price: '$150/night',
-          rating: 4.5,
-          image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400',
-          amenities: ['WiFi', 'Pool', 'Gym', 'Restaurant']
-        },
-        {
-          id: 2,
-          name: 'Cozy Boutique Inn',
-          location: location,
-          price: '$120/night',
-          rating: 4.2,
-          image: 'https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?w=400',
-          amenities: ['WiFi', 'Breakfast', 'Parking']
-        },
-        {
-          id: 3,
-          name: 'Modern City Apartment',
-          location: location,
-          price: '$180/night',
-          rating: 4.7,
-          image: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=400',
-          amenities: ['WiFi', 'Kitchen', 'Balcony', 'Gym']
-        }
-      ];
+    setError(null);
+    setAccommodations([]);
+    setIsDemo(false);
 
-      // Simulate API delay
-      setTimeout(() => {
-        setAccommodations(mockAccommodations);
-        setLoading(false);
-      }, 1000);
-    } catch (error) {
-      console.error('Error fetching accommodations:', error);
+    try {
+      // Call the real API
+      const response = await searchHotels({
+        location: location,
+        check_in: checkIn || getDefaultCheckIn(),
+        check_out: checkOut || getDefaultCheckOut(),
+        guests: guests
+      });
+
+      if (response.success && response.data) {
+        setAccommodations(response.data);
+        // Check if it's demo/fallback data
+        setIsDemo(response.is_demo || false);
+      } else {
+        setError(response.message || 'No accommodations found');
+      }
+    } catch (err) {
+      console.error('Error fetching accommodations:', err);
+      setError('Failed to fetch accommodations. Please try again.');
+    } finally {
       setLoading(false);
     }
   };
 
-  const handleNearbySearch = () => {
+  const handleNearbySearch = async () => {
     if (userLocation) {
+      setLoading(true);
+      setError(null);
+      setAccommodations([]);
+      setIsDemo(false);
       setLocation('Current Location');
-      handleSearch();
+
+      try {
+        // Call the API with geolocation
+        const response = await searchHotels({
+          latitude: userLocation.lat,
+          longitude: userLocation.lng,
+          check_in: checkIn || getDefaultCheckIn(),
+          check_out: checkOut || getDefaultCheckOut(),
+          guests: guests
+        });
+
+        if (response.success && response.data) {
+          setAccommodations(response.data);
+          setIsDemo(response.is_demo || false);
+        } else {
+          setError(response.message || 'No accommodations found nearby');
+        }
+      } catch (err) {
+        console.error('Error fetching nearby accommodations:', err);
+        setError('Failed to fetch nearby accommodations. Please try again.');
+      } finally {
+        setLoading(false);
+      }
     } else {
       alert('Please enable location services to find nearby accommodations.');
     }
+  };
+
+  // Helper functions for default dates
+  const getDefaultCheckIn = () => {
+    const date = new Date();
+    date.setDate(date.getDate() + 1);
+    return date.toISOString().split('T')[0];
+  };
+
+  const getDefaultCheckOut = () => {
+    const date = new Date();
+    date.setDate(date.getDate() + 3);
+    return date.toISOString().split('T')[0];
   };
 
   return (
@@ -108,6 +154,49 @@ const AccommodationPage = () => {
           <p style={{ color: '#666', fontSize: '18px' }}>
             Discover amazing accommodations worldwide or find nearby options
           </p>
+          {/* Location Status Indicator */}
+          {locationStatus === 'detecting' && (
+            <div style={{ 
+              marginTop: '10px', 
+              padding: '8px 16px', 
+              background: '#e3f2fd', 
+              borderRadius: '20px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <span>🔄</span>
+              <span style={{ color: '#1976d2', fontSize: '14px' }}>Detecting your location...</span>
+            </div>
+          )}
+          {locationStatus === 'detected' && (
+            <div style={{ 
+              marginTop: '10px', 
+              padding: '8px 16px', 
+              background: '#e8f5e9', 
+              borderRadius: '20px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <span>📍</span>
+              <span style={{ color: '#388e3c', fontSize: '14px' }}>Location detected! Searching nearby hotels...</span>
+            </div>
+          )}
+          {locationStatus === 'denied' && (
+            <div style={{ 
+              marginTop: '10px', 
+              padding: '8px 16px', 
+              background: '#fff3e0', 
+              borderRadius: '20px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <span>ℹ️</span>
+              <span style={{ color: '#f57c00', fontSize: '14px' }}>Enable location for personalized results</span>
+            </div>
+          )}
         </div>
 
         {/* Search Form */}

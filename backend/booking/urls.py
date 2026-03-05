@@ -1,6 +1,12 @@
 from django.urls import path
 from . import views
-from .views import AmadeusFlightSearchView, CreateOrderView, GetOrderView
+from . import views_gps
+from .views import AmadeusFlightSearchView, CreateOrderView, GetOrderView, HotelSearchView
+from .views import (
+    VendorRegisterView, VendorProfileView,
+    VendorProductListView, VendorProductDetailView,
+    PublicVendorListView, PublicVendorProductsView
+)
 from .stripe_payment import (
     CreatePaymentIntentView,
     PaymentIntentConfirmView,
@@ -38,4 +44,19 @@ urlpatterns = [
     path('amadeus/search/', AmadeusFlightSearchView.as_view(), name='amadeus-flight-search'),
     path('amadeus/create-order/', CreateOrderView.as_view(), name='amadeus-create-order'),
     path('amadeus/order/<str:order_id>/', GetOrderView.as_view(), name='amadeus-get-order'),
+    # Vendor API endpoints
+    path('vendors/register/', VendorRegisterView.as_view(), name='vendor-register'),
+    path('vendors/profile/', VendorProfileView.as_view(), name='vendor-profile'),
+    path('vendors/products/', VendorProductListView.as_view(), name='vendor-products'),
+    path('vendors/products/<int:pk>/', VendorProductDetailView.as_view(), name='vendor-product-detail'),
+    # Public Vendor endpoints
+    path('vendors/', PublicVendorListView.as_view(), name='public-vendors'),
+    path('vendors/products/public/', PublicVendorProductsView.as_view(), name='public-vendor-products'),
+    # Hotel/Accommodation Search endpoint
+    path('hotels/search/', HotelSearchView.as_view(), name='hotel-search'),
+    
+    # GPS-based Airport Search endpoints
+    path('airports/nearby/', views_gps.NearbyAirportsView.as_view(), name='nearby-airports'),
+    path('airports/nearest/', views_gps.NearestAirportView.as_view(), name='nearest-airport'),
 ]
+

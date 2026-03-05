@@ -24,7 +24,7 @@ from .permissions import (
     IsApprovedUser, IsAdminOrApprovedUser, IPAddressPermission, BookingRateLimitPermission,
     FlightSearchThrottle, BookingThrottle, AdminThrottle
 )
-from .iata_utils import get_iata_code, get_city_from_iata, is_valid_iata, get_airport_info
+from .iata_utils import get_iata_code, get_city_from_iata, is_valid_iata, get_airport_info, find_nearby_airports, get_nearest_airport
 import logging
 
 logger = logging.getLogger(__name__)
@@ -528,8 +528,27 @@ class FlightSearchView(generics.ListAPIView):
         }
         iata_to_city = {v: k.title() for k, v in city_to_iata.items()}  # Reverse and title case
 
+        # Safely extract flight offers list from Amadeus API response
+        # Amadeus returns {"data": [...], "meta": {...}} or just [...] depending on endpoint
+        if amadeus_data is None:
+            logger.warning("Amadeus data is None")
+            return []
+        
+        if isinstance(amadeus_data, dict):
+            # Standard Amadeus response format: {"data": [...], ...}
+            flight_offers = amadeus_data.get('data', [])
+            if not isinstance(flight_offers, list):
+                logger.error(f"Unexpected 'data' field type from Amadeus API: {type(flight_offers)}")
+                return []
+        elif isinstance(amadeus_data, list):
+            # Direct list response (some Amadeus endpoints return list directly)
+            flight_offers = amadeus_data
+        else:
+            logger.error(f"Unexpected Amadeus response type: {type(amadeus_data)}")
+            return []
+
         flights = []
-        for offer in amadeus_data[:10]:  # Limit to 10 results
+        for offer in flight_offers[:10]:  # Limit to 10 results
             try:
                 itinerary = offer['itineraries'][0]
                 segment = itinerary['segments'][0]
@@ -782,3 +801,371 @@ class GetOrderView(APIView):
                 'success': False,
                 'error': 'Failed to retrieve order. Please try again later.'
             }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+
+# Vendor Views
+from .models import Vendor, VendorProduct
+from .serializers import (
+    VendorSerializer, VendorCreateSerializer,
+    VendorProductSerializer, VendorProductCreateSerializer
+)
+
+
+class VendorRegisterView(APIView):
+    """APIView for registering as a vendor."""
+    permission_classes = [IsAuthenticated, IsApprovedUser]
+
+    def post(self, request):
+        # Check if user already has a vendor profile
+        if hasattr(request.user, 'vendor_profile'):
+            return Response({
+                'error': 'You already have a vendor profile'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        serializer = VendorCreateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Create vendor profile and mark user as vendor
+        vendor = serializer.save(user=request.user)
+        request.user.is_vendor = True
+        request.user.save()
+        
+        return Response({
+            'message': 'Vendor profile created successfully',
+            'vendor': VendorSerializer(vendor).data
+        }, status=status.HTTP_201_CREATED)
+
+
+class VendorProfileView(APIView):
+    """APIView for getting and updating vendor profile."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if not hasattr(request.user, 'vendor_profile'):
+            return Response({
+                'error': 'You do not have a vendor profile'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        vendor = request.user.vendor_profile
+        serializer = VendorSerializer(vendor)
+        return Response(serializer.data)
+
+    def put(self, request):
+        if not hasattr(request.user, 'vendor_profile'):
+            return Response({
+                'error': 'You do not have a vendor profile'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        vendor = request.user.vendor_profile
+        serializer = VendorCreateSerializer(vendor, data=request.data, partial=True)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        serializer.save()
+        return Response({
+            'message': 'Vendor profile updated successfully',
+            'vendor': VendorSerializer(vendor).data
+        })
+
+
+class VendorProductListView(generics.ListCreateAPIView):
+    """APIView for listing and creating vendor products."""
+    serializer_class = VendorProductSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        if not hasattr(self.request.user, 'vendor_profile'):
+            return VendorProduct.objects.none()
+        return VendorProduct.objects.filter(vendor=self.request.user.vendor_profile)
+
+    def perform_create(self, serializer):
+        if not hasattr(self.request.user, 'vendor_profile'):
+            raise PermissionDenied('You do not have a vendor profile')
+        serializer.save(vendor=self.request.user.vendor_profile)
+
+
+class VendorProductDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """APIView for getting, updating, and deleting vendor products."""
+    serializer_class = VendorProductSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        if not hasattr(self.request.user, 'vendor_profile'):
+            return VendorProduct.objects.none()
+        return VendorProduct.objects.filter(vendor=self.request.user.vendor_profile)
+
+    def perform_update(self, serializer):
+        serializer.save(vendor=self.request.user.vendor_profile)
+
+
+class PublicVendorListView(generics.ListAPIView):
+    """Public APIView for listing approved vendors and their products."""
+    serializer_class = VendorSerializer
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        queryset = Vendor.objects.filter(is_approved=True)
+        category = self.request.query_params.get('category')
+        
+        if category:
+            # Filter vendors that have products in the specified category
+            queryset = queryset.filter(products__category=category).distinct()
+        
+        return queryset
+
+
+class PublicVendorProductsView(generics.ListAPIView):
+    """Public APIView for listing products from approved vendors."""
+    serializer_class = VendorProductSerializer
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        queryset = VendorProduct.objects.filter(vendor__is_approved=True, is_active=True)
+        
+        category = self.request.query_params.get('category')
+        vendor_id = self.request.query_params.get('vendor_id')
+        
+        if category:
+            queryset = queryset.filter(category=category)
+        
+        if vendor_id:
+            queryset = queryset.filter(vendor_id=vendor_id)
+        
+        return queryset
+
+
+# Hotel/Accommodation Search View
+class HotelSearchView(APIView):
+    """APIView for searching hotels/accommodations using Amadeus API."""
+    permission_classes = [AllowAny]
+    throttle_classes = [AnonRateThrottle, UserRateThrottle]
+
+    def get(self, request):
+        location = request.query_params.get('location')
+        check_in = request.query_params.get('check_in')
+        check_out = request.query_params.get('check_out')
+        guests = request.query_params.get('guests', 1)
+        latitude = request.query_params.get('latitude')
+        longitude = request.query_params.get('longitude')
+
+        if not check_in or not check_out:
+            return Response({
+                'error': 'Check-in and check-out dates are required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Parse dates to ensure proper format (YYYY-MM-DD)
+        try:
+            from datetime import datetime
+            check_in_date = datetime.strptime(check_in, '%Y-%m-%d').strftime('%Y-%m-%d')
+            check_out_date = datetime.strptime(check_out, '%Y-%m-%d').strftime('%Y-%m-%d')
+        except ValueError:
+            return Response({
+                'error': 'Invalid date format. Use YYYY-MM-DD'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            amadeus_client = AmadeusClient()
+            
+            # If latitude and longitude are provided, search by geolocation
+            if latitude and longitude:
+                hotel_data = amadeus_client.search_hotels_by_geocode(
+                    latitude=latitude,
+                    longitude=longitude,
+                    check_in=check_in_date,
+                    check_out=check_out_date,
+                    guests=int(guests)
+                )
+            # Otherwise search by city name
+            elif location:
+                # Convert city name to IATA code
+                city_iata = get_iata_code(location)
+                if not city_iata:
+                    # Try to get airport code from iata_utils
+                    city_info = get_airport_info(location)
+                    if city_info:
+                        city_iata = city_info.get('iata')
+                
+                if not city_iata:
+                    # Return fallback with sample hotels for demo
+                    return Response(self._get_fallback_hotels(location, check_in_date, check_out_date))
+                
+                hotel_data = amadeus_client.search_hotels(
+                    city_code=city_iata,
+                    check_in=check_in_date,
+                    check_out=check_out_date,
+                    guests=int(guests)
+                )
+            else:
+                return Response({
+                    'error': 'Please provide either location or latitude/longitude'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            if hotel_data:
+                mapped_hotels = self._map_amadeus_hotels(hotel_data)
+                return Response({
+                    'success': True,
+                    'data': mapped_hotels,
+                    'message': f"Found {len(mapped_hotels)} accommodations"
+                })
+            else:
+                # Return fallback data if API returns nothing
+                return Response(self._get_fallback_hotels(location, check_in_date, check_out_date))
+
+        except Exception as e:
+            logger.error(f"Error searching hotels: {e}")
+            # Return fallback data on error
+            fallback_location = location or "your area"
+            return Response(self._get_fallback_hotels(fallback_location, check_in_date, check_out_date))
+
+    def _map_amadeus_hotels(self, amadeus_data):
+        """Map Amadeus hotel API response to frontend-friendly format"""
+        hotels = []
+        
+        # Handle Amadeus response format
+        if isinstance(amadeus_data, dict):
+            hotel_offers = amadeus_data.get('data', [])
+        elif isinstance(amadeus_data, list):
+            hotel_offers = amadeus_data
+        else:
+            return []
+
+        for offer in hotel_offers[:20]:  # Limit to 20 results
+            try:
+                hotel = offer.get('hotel', {})
+                offers = offer.get('offers', [{}])
+                first_offer = offers[0] if offers else {}
+                
+                # Get price
+                price = first_offer.get('price', {})
+                price_total = price.get('total', 'N/A')
+                price_currency = price.get('currency', 'USD')
+                
+                # Get room info
+                room = first_offer.get('room', {})
+                room_type = room.get('type', 'Standard Room')
+                room_description = room.get('description', '')
+                
+                # Get amenities from first offer
+                amenities = []
+                if first_offer.get('amenities'):
+                    amenities = first_offer.get('amenities', [])
+                
+                # Get rating if available
+                rating = hotel.get('rating', 0)
+                
+                # Get hotel name and address
+                name = hotel.get('name', 'Unknown Hotel')
+                address = hotel.get('address', {})
+                city = address.get('city', '')
+                country = address.get('countryCode', '')
+                postal_code = address.get('postalCode', '')
+                full_location = f"{city}, {country}" if city and country else city or location
+                
+                # Get contact info
+                contact = hotel.get('contact', {})
+                phone = contact.get('phone', '')
+                email = contact.get('email', '')
+                
+                # Get images
+                images = hotel.get('images', [])
+                image_url = ''
+                if images and len(images) > 0:
+                    image_url = images[0].get('url', '')
+                
+                mapped_hotel = {
+                    'id': offer.get('offerId', offer.get('id', '')),
+                    'name': name,
+                    'location': full_location,
+                    'city': city,
+                    'country': country,
+                    'price': f"{price_currency} {price_total}" if price_total != 'N/A' else 'Contact for pricing',
+                    'price_value': float(price_total) if price_total != 'N/A' else 0,
+                    'currency': price_currency,
+                    'rating': rating,
+                    'room_type': room_type,
+                    'description': room_description,
+                    'amenities': amenities[:6],  # Limit to 6 amenities
+                    'image': image_url or 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400',
+                    'phone': phone,
+                    'email': email,
+                    'check_in': first_offer.get('checkInDate', ''),
+                    'check_out': first_offer.get('checkOutDate', ''),
+                }
+                hotels.append(mapped_hotel)
+            except Exception as e:
+                logger.error(f"Error mapping hotel data: {e}")
+                continue
+
+        return hotels
+
+    def _get_fallback_hotels(self, location, check_in, check_out):
+        """Generate fallback hotel data when API is unavailable"""
+        import random
+        
+        # Sample hotel data for fallback
+        fallback_data = [
+            {
+                'name': 'Grand Plaza Hotel',
+                'rating': 4.5,
+                'room_type': 'Deluxe King Room',
+                'amenities': ['WiFi', 'Pool', 'Gym', 'Restaurant', 'Spa', 'Room Service']
+            },
+            {
+                'name': 'Comfort Inn & Suites',
+                'rating': 4.2,
+                'room_type': 'Standard Double Room',
+                'amenities': ['WiFi', 'Breakfast', 'Parking', 'Fitness Center']
+            },
+            {
+                'name': 'Boutique Hotel Downtown',
+                'rating': 4.7,
+                'room_type': 'Executive Suite',
+                'amenities': ['WiFi', 'Restaurant', 'Bar', 'Concierge', 'Airport Shuttle']
+            },
+            {
+                'name': 'Seaside Resort',
+                'rating': 4.4,
+                'room_type': 'Ocean View Room',
+                'amenities': ['WiFi', 'Pool', 'Beach Access', 'Water Sports', 'Kids Club']
+            },
+            {
+                'name': 'City Center Apartments',
+                'rating': 4.1,
+                'room_type': 'One-Bedroom Apartment',
+                'amenities': ['WiFi', 'Kitchen', 'Washer/Dryer', 'Gym', 'Parking']
+            }
+        ]
+        
+        hotels = []
+        base_prices = [120, 89, 199, 150, 95]
+        
+        for i, hotel in enumerate(fallback_data):
+            price = base_prices[i] + random.randint(-10, 30)
+            hotels.append({
+                'id': f'fallback_{i+1}',
+                'name': hotel['name'],
+                'location': location,
+                'city': location,
+                'country': '',
+                'price': f'USD {price}',
+                'price_value': price,
+                'currency': 'USD',
+                'rating': hotel['rating'],
+                'room_type': hotel['room_type'],
+                'description': f"Comfortable {hotel['room_type']} with modern amenities",
+                'amenities': hotel['amenities'],
+                'image': f'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400&h=300&fit=crop',
+                'phone': '',
+                'email': '',
+                'check_in': check_in,
+                'check_out': check_out,
+                'is_fallback': True
+            })
+        
+        return {
+            'success': True,
+            'data': hotels,
+            'message': f"Found {len(hotels)} accommodations (demo data)",
+            'is_demo': True
+        }

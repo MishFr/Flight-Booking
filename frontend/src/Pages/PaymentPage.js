@@ -7,7 +7,7 @@ const PaymentPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
-  const { item, type } = location.state || {}; // item could be flight or accommodation, type indicates which
+  const { item, type } = location.state || {};
   const { user } = useSelector((state) => state.auth);
 
   const [paymentData, setPaymentData] = useState({
@@ -27,23 +27,14 @@ const PaymentPage = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setPaymentData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    // Clear error when user starts typing
+    setPaymentData(prev => ({ ...prev, [name]: value }));
     if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }));
+      setErrors(prev => ({ ...prev, [name]: '' }));
     }
   };
 
   const validateForm = () => {
     const newErrors = {};
-
-    // Visa card validation (starts with 4, 13-19 digits)
     const visaRegex = /^4[0-9]{12}(?:[0-9]{3})?$/;
     if (!visaRegex.test(paymentData.cardNumber.replace(/\s/g, ''))) {
       newErrors.cardNumber = 'Please enter a valid Visa card number';
@@ -57,15 +48,6 @@ const PaymentPage = () => {
       if (expiryDate < currentDate) {
         newErrors.expiry = 'Card has expired';
       }
-    }
-
-    if ((!paymentData.cardholderName.trim()) && (!paymentData.billingAddress.trim())) {
-      newErrors.cardholderName = 'Cardholder name is required';
-      newErrors.billingAddress = 'Billing address is required';
-    }
-
-    if (!/^\d{3,4}$/.test(paymentData.cvv)) {
-      newErrors.cvv = 'Please enter a valid CVV (3-4 digits)';
     }
 
     if (!paymentData.cardholderName.trim()) {
@@ -88,6 +70,10 @@ const PaymentPage = () => {
       newErrors.country = 'Country is required';
     }
 
+    if (!/^\d{3,4}$/.test(paymentData.cvv)) {
+      newErrors.cvv = 'Please enter a valid CVV (3-4 digits)';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -100,41 +86,24 @@ const PaymentPage = () => {
     for (let i = 0, len = match.length; i < len; i += 4) {
       parts.push(match.substring(i, i + 4));
     }
-    if (parts.length) {
-      return parts.join(' ');
-    } else {
-      return v;
-    }
+    return parts.length ? parts.join(' ') : v;
   };
 
   const handleCardNumberChange = (e) => {
     const formatted = formatCardNumber(e.target.value);
-    setPaymentData(prev => ({
-      ...prev,
-      cardNumber: formatted
-    }));
+    setPaymentData(prev => ({ ...prev, cardNumber: formatted }));
     if (errors.cardNumber) {
-      setErrors(prev => ({
-        ...prev,
-        cardNumber: ''
-      }));
+      setErrors(prev => ({ ...prev, cardNumber: '' }));
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
 
     setProcessing(true);
-
     try {
-      // Simulate payment processing
       await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Create booking after successful payment
       if (type === 'flight' && user && item.id) {
         await dispatch(createBooking({
           user_id: user.id,
@@ -142,11 +111,7 @@ const PaymentPage = () => {
           payment_status: 'paid'
         })).unwrap();
       }
-
-      // Here you would integrate with actual payment processor
       alert('Payment successful! Your booking has been confirmed.');
-
-      // Navigate back to dashboard or bookings page
       navigate('/dashboard');
     } catch (error) {
       alert('Payment failed. Please try again.');
@@ -157,190 +122,173 @@ const PaymentPage = () => {
 
   if (!item) {
     return (
-      <div style={{ textAlign: 'center', padding: '50px' }}>
-        <h2>No item selected for payment</h2>
-        <button onClick={() => navigate('/dashboard')}>Back to Dashboard</button>
+      <div style={{ 
+        minHeight: '100vh', 
+        display: 'flex', 
+        flexDirection: 'column',
+        alignItems: 'center', 
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #0A1628 0%, #1a365d 100%)',
+        fontFamily: "'Inter', sans-serif"
+      }}>
+        <div style={{ 
+          background: 'white', 
+          padding: '48px', 
+          borderRadius: '20px',
+          textAlign: 'center',
+          boxShadow: '0 16px 64px rgba(0, 0, 0, 0.3)'
+        }}>
+          <div style={{ fontSize: '64px', marginBottom: '20px' }}>💳</div>
+          <h2 style={{ fontFamily: "'Playfair Display', serif", color: '#0A1628', marginBottom: '12px' }}>No item selected</h2>
+          <p style={{ color: '#6C757D', marginBottom: '24px' }}>Please select a flight to proceed with payment</p>
+          <button 
+            onClick={() => navigate('/dashboard')}
+            style={{
+              background: 'linear-gradient(135deg, #D4AF37 0%, #FFD700 100%)',
+              color: '#0A1628',
+              border: 'none',
+              padding: '14px 32px',
+              borderRadius: '10px',
+              fontSize: '16px',
+              fontWeight: 700,
+              cursor: 'pointer'
+            }}
+          >
+            Back to Dashboard
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
     <>
-      <style>
-        {`
-          @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-          }
-          .payment-container {
-            animation: fadeIn 0.8s ease-out;
-          }
-          .payment-form {
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            border-radius: 15px;
-            padding: 30px;
-            margin: 20px 0;
-            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
-            backdrop-filter: blur(4px);
-            border: 1px solid rgba(255, 255, 255, 0.18);
-          }
-          .form-row {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-bottom: 20px;
-          }
-          .form-group {
-            display: flex;
-            flex-direction: column;
-          }
-          .form-group label {
-            margin-bottom: 5px;
-            font-weight: bold;
-            color: #333;
-          }
-          .form-group input, .form-group select {
-            padding: 12px;
-            border: 2px solid #e1e5e9;
-            border-radius: 8px;
-            font-size: 16px;
-            transition: border-color 0.3s ease;
-          }
-          .form-group input:focus, .form-group select:focus {
-            outline: none;
-            border-color: #667eea;
-          }
-          .form-group input.error, .form-group select.error {
-            border-color: #e74c3c;
-          }
-          .error-message {
-            color: #e74c3c;
-            font-size: 14px;
-            margin-top: 5px;
-          }
-          .visa-logo {
-            display: inline-block;
-            background: linear-gradient(135deg, #1a1f71 0%, #003d82 100%);
-            color: white;
-            padding: 8px 16px;
-            border-radius: 4px;
-            font-weight: bold;
-            font-size: 18px;
-            margin-bottom: 20px;
-          }
-          .item-summary {
-            background: rgba(255, 255, 255, 0.8);
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-          }
-          .pay-button {
-            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            border-radius: 25px;
-            font-size: 18px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-            width: 100%;
-            max-width: 300px;
-            margin: 0 auto;
-            display: block;
-          }
-          .pay-button:hover:not(:disabled) {
-            transform: scale(1.05);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-          }
-          .pay-button:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-          }
-          .back-button {
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 25px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-            transition: all 0.3s ease;
-            z-index: 1000;
-          }
-          .back-button:hover {
-            transform: scale(1.05);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-          }
-          .processing {
-            text-align: center;
-            color: #666;
-            font-size: 18px;
-          }
-        `}
-      </style>
-      <button className="back-button" onClick={() => navigate(-1)}>
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+      
+      <button 
+        onClick={() => navigate(-1)}
+        style={{
+          position: 'fixed',
+          top: '24px',
+          left: '24px',
+          background: '#0A1628',
+          color: 'white',
+          border: '1px solid #D4AF37',
+          padding: '12px 20px',
+          borderRadius: '10px',
+          fontSize: '14px',
+          fontWeight: 600,
+          cursor: 'pointer',
+          boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
+          transition: 'all 0.3s ease',
+          zIndex: 1000
+        }}
+      >
         ← Back
       </button>
-      <div className="payment-container" style={{
+      
+      <div style={{
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        padding: '80px 20px 20px',
-        fontFamily: 'Arial, sans-serif'
+        background: 'linear-gradient(135deg, #0A1628 0%, #1a365d 50%, #0A1628 100%)',
+        padding: '100px 24px 60px',
+        fontFamily: "'Inter', sans-serif"
       }}>
         <div style={{
           maxWidth: '800px',
           margin: '0 auto',
-          backgroundColor: 'rgba(255, 255, 255, 0.95)',
-          borderRadius: '20px',
-          padding: '30px',
-          boxShadow: '0 15px 35px rgba(0, 0, 0, 0.1)',
-          backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(255, 255, 255, 0.2)'
+          background: 'rgba(255, 255, 255, 0.98)',
+          borderRadius: '24px',
+          padding: '40px',
+          boxShadow: '0 16px 64px rgba(0, 0, 0, 0.3)',
+          border: '1px solid rgba(212, 175, 55, 0.2)',
+          position: 'relative',
+          overflow: 'hidden'
         }}>
+          {/* Gold Top Line */}
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: '4px',
+            background: 'linear-gradient(90deg, #D4AF37, #FFD700, #B8860B)'
+          }}></div>
+
           <h1 style={{
             textAlign: 'center',
-            marginBottom: '30px',
-            color: '#333',
-            fontSize: '36px'
+            marginBottom: '32px',
+            fontFamily: "'Playfair Display', serif",
+            fontSize: '36px',
+            fontWeight: 700,
+            color: '#0A1628'
           }}>
             💳 Secure Payment
           </h1>
 
-          <div className="visa-logo">
+          {/* Visa Logo */}
+          <div style={{
+            display: 'inline-block',
+            background: 'linear-gradient(135deg, #1a1f71 0%, #003d82 100%)',
+            color: 'white',
+            padding: '10px 20px',
+            borderRadius: '6px',
+            fontWeight: 700,
+            fontSize: '20px',
+            marginBottom: '28px',
+            letterSpacing: '2px'
+          }}>
             VISA ACCEPTED HERE
           </div>
 
-          <div className="item-summary">
-            <h3>Booking Summary</h3>
-            <p><strong>Type:</strong> {type === 'flight' ? 'Flight' : 'Accommodation'}</p>
-            {type === 'flight' ? (
-              <>
-                <p><strong>Flight:</strong> {item.flightNumber}</p>
-                <p><strong>From:</strong> {item.from} → <strong>To:</strong> {item.to}</p>
-                <p><strong>Price:</strong> {item.price}</p>
-              </>
-            ) : (
-              <>
-                <p><strong>Accommodation:</strong> {item.name}</p>
-                <p><strong>Location:</strong> {item.location}</p>
-                <p><strong>Price:</strong> {item.price}</p>
-              </>
-            )}
+          {/* Booking Summary */}
+          <div style={{
+            background: 'linear-gradient(145deg, rgba(248,249,250,0.98) 0%, rgba(233,236,239,0.95) 100%)',
+            padding: '24px',
+            borderRadius: '16px',
+            marginBottom: '28px',
+            border: '1px solid rgba(212, 175, 55, 0.15)'
+          }}>
+            <h3 style={{ fontFamily: "'Playfair Display', serif", color: '#0A1628', marginBottom: '16px', fontSize: '20px' }}>Booking Summary</h3>
+            <div style={{ display: 'grid', gap: '10px' }}>
+              <p style={{ color: '#495057', margin: 0 }}>
+                <strong style={{ color: '#0A1628' }}>Type:</strong> {type === 'flight' ? '✈️ Flight' : '🏨 Accommodation'}
+              </p>
+              {type === 'flight' ? (
+                <>
+                  <p style={{ color: '#495057', margin: 0 }}>
+                    <strong style={{ color: '#0A1628' }}>Flight:</strong> {item.flightNumber}
+                  </p>
+                  <p style={{ color: '#495057', margin: 0 }}>
+                    <strong style={{ color: '#0A1628' }}>Route:</strong> {item.from} → {item.to}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p style={{ color: '#495057', margin: 0 }}>
+                    <strong style={{ color: '#0A1628' }}>Accommodation:</strong> {item.name}
+                  </p>
+                  <p style={{ color: '#495057', margin: 0 }}>
+                    <strong style={{ color: '#0A1628' }}>Location:</strong> {item.location}
+                  </p>
+                </>
+              )}
+              <p style={{ color: '#0A1628', margin: '8px 0 0', fontSize: '20px', fontWeight: 700 }}>
+                <strong>Total Price:</strong> {item.price}
+              </p>
+            </div>
           </div>
 
-          <form className="payment-form" onSubmit={handleSubmit}>
-            <h3>Visa Card Details</h3>
+          <form onSubmit={handleSubmit}>
+            <h3 style={{ fontFamily: "'Playfair Display', serif", color: '#0A1628', marginBottom: '20px', fontSize: '20px' }}>Visa Card Details</h3>
 
-            <div className="form-row">
-              <div className="form-group">
-                <label>Card Number</label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', marginBottom: '20px' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#0A1628', fontSize: '14px' }}>Card Number</label>
                 <input
                   type="text"
                   name="cardNumber"
@@ -348,35 +296,58 @@ const PaymentPage = () => {
                   onChange={handleCardNumberChange}
                   placeholder="1234 5678 9012 3456"
                   maxLength="19"
-                  className={errors.cardNumber ? 'error' : ''}
+                  style={{
+                    width: '100%',
+                    padding: '14px',
+                    border: errors.cardNumber ? '2px solid #EF4444' : '2px solid #E9ECEF',
+                    borderRadius: '12px',
+                    fontSize: '16px',
+                    transition: 'all 0.3s ease',
+                    background: 'white'
+                  }}
                   required
                 />
-                {errors.cardNumber && <span className="error-message">{errors.cardNumber}</span>}
+                {errors.cardNumber && <span style={{ color: '#EF4444', fontSize: '12px', marginTop: '4px', display: 'block' }}>{errors.cardNumber}</span>}
               </div>
-              <div className="form-group">
-                <label>Cardholder Name</label>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#0A1628', fontSize: '14px' }}>Cardholder Name</label>
                 <input
                   type="text"
                   name="cardholderName"
                   value={paymentData.cardholderName}
                   onChange={handleInputChange}
                   placeholder="John Doe"
-                  className={errors.cardholderName ? 'error' : ''}
+                  style={{
+                    width: '100%',
+                    padding: '14px',
+                    border: errors.cardholderName ? '2px solid #EF4444' : '2px solid #E9ECEF',
+                    borderRadius: '12px',
+                    fontSize: '16px',
+                    transition: 'all 0.3s ease',
+                    background: 'white'
+                  }}
                   required
                 />
-                {errors.cardholderName && <span className="error-message">{errors.cardholderName}</span>}
+                {errors.cardholderName && <span style={{ color: '#EF4444', fontSize: '12px', marginTop: '4px', display: 'block' }}>{errors.cardholderName}</span>}
               </div>
             </div>
 
-            <div className="form-row">
-              <div className="form-group">
-                <label>Expiry Date</label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', marginBottom: '20px' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#0A1628', fontSize: '14px' }}>Expiry Date</label>
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <select
                     name="expiryMonth"
                     value={paymentData.expiryMonth}
                     onChange={handleInputChange}
-                    className={errors.expiry ? 'error' : ''}
+                    style={{
+                      flex: 1,
+                      padding: '14px',
+                      border: errors.expiry ? '2px solid #EF4444' : '2px solid #E9ECEF',
+                      borderRadius: '12px',
+                      fontSize: '16px',
+                      background: 'white'
+                    }}
                     required
                   >
                     <option value="">Month</option>
@@ -390,7 +361,14 @@ const PaymentPage = () => {
                     name="expiryYear"
                     value={paymentData.expiryYear}
                     onChange={handleInputChange}
-                    className={errors.expiry ? 'error' : ''}
+                    style={{
+                      flex: 1,
+                      padding: '14px',
+                      border: errors.expiry ? '2px solid #EF4444' : '2px solid #E9ECEF',
+                      borderRadius: '12px',
+                      fontSize: '16px',
+                      background: 'white'
+                    }}
                     required
                   >
                     <option value="">Year</option>
@@ -401,10 +379,10 @@ const PaymentPage = () => {
                     ))}
                   </select>
                 </div>
-                {errors.expiry && <span className="error-message">{errors.expiry}</span>}
+                {errors.expiry && <span style={{ color: '#EF4444', fontSize: '12px', marginTop: '4px', display: 'block' }}>{errors.expiry}</span>}
               </div>
-              <div className="form-group">
-                <label>CVV</label>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#0A1628', fontSize: '14px' }}>CVV</label>
                 <input
                   type="text"
                   name="cvv"
@@ -412,80 +390,141 @@ const PaymentPage = () => {
                   onChange={handleInputChange}
                   placeholder="123"
                   maxLength="4"
-                  className={errors.cvv ? 'error' : ''}
+                  style={{
+                    width: '100%',
+                    padding: '14px',
+                    border: errors.cvv ? '2px solid #EF4444' : '2px solid #E9ECEF',
+                    borderRadius: '12px',
+                    fontSize: '16px',
+                    transition: 'all 0.3s ease',
+                    background: 'white'
+                  }}
                   required
                 />
-                {errors.cvv && <span className="error-message">{errors.cvv}</span>}
+                {errors.cvv && <span style={{ color: '#EF4444', fontSize: '12px', marginTop: '4px', display: 'block' }}>{errors.cvv}</span>}
               </div>
             </div>
 
-            <h3 style={{ marginTop: '30px' }}>Billing Address</h3>
+            <h3 style={{ fontFamily: "'Playfair Display', serif", color: '#0A1628', marginTop: '32px', marginBottom: '20px', fontSize: '20px' }}>Billing Address</h3>
 
-            <div className="form-row">
-              <div className="form-group">
-                <label>Address</label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', marginBottom: '20px' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#0A1628', fontSize: '14px' }}>Address</label>
                 <input
                   type="text"
                   name="billingAddress"
                   value={paymentData.billingAddress}
                   onChange={handleInputChange}
                   placeholder="123 Main St"
-                  className={errors.billingAddress ? 'error' : ''}
+                  style={{
+                    width: '100%',
+                    padding: '14px',
+                    border: errors.billingAddress ? '2px solid #EF4444' : '2px solid #E9ECEF',
+                    borderRadius: '12px',
+                    fontSize: '16px',
+                    background: 'white'
+                  }}
                   required
                 />
-                {errors.billingAddress && <span className="error-message">{errors.billingAddress}</span>}
               </div>
-              <div className="form-group">
-                <label>City</label>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#0A1628', fontSize: '14px' }}>City</label>
                 <input
                   type="text"
                   name="city"
                   value={paymentData.city}
                   onChange={handleInputChange}
                   placeholder="New York"
-                  className={errors.city ? 'error' : ''}
+                  style={{
+                    width: '100%',
+                    padding: '14px',
+                    border: errors.city ? '2px solid #EF4444' : '2px solid #E9ECEF',
+                    borderRadius: '12px',
+                    fontSize: '16px',
+                    background: 'white'
+                  }}
                   required
                 />
-                {errors.city && <span className="error-message">{errors.city}</span>}
               </div>
             </div>
 
-            <div className="form-row">
-              <div className="form-group">
-                <label>ZIP Code</label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', marginBottom: '32px' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#0A1628', fontSize: '14px' }}>ZIP Code</label>
                 <input
                   type="text"
                   name="zipCode"
                   value={paymentData.zipCode}
                   onChange={handleInputChange}
                   placeholder="10001"
-                  className={errors.zipCode ? 'error' : ''}
+                  style={{
+                    width: '100%',
+                    padding: '14px',
+                    border: errors.zipCode ? '2px solid #EF4444' : '2px solid #E9ECEF',
+                    borderRadius: '12px',
+                    fontSize: '16px',
+                    background: 'white'
+                  }}
                   required
                 />
-                {errors.zipCode && <span className="error-message">{errors.zipCode}</span>}
               </div>
-              <div className="form-group">
-                <label>Country</label>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#0A1628', fontSize: '14px' }}>Country</label>
                 <input
                   type="text"
                   name="country"
                   value={paymentData.country}
                   onChange={handleInputChange}
                   placeholder="United States"
-                  className={errors.country ? 'error' : ''}
+                  style={{
+                    width: '100%',
+                    padding: '14px',
+                    border: errors.country ? '2px solid #EF4444' : '2px solid #E9ECEF',
+                    borderRadius: '12px',
+                    fontSize: '16px',
+                    background: 'white'
+                  }}
                   required
                 />
-                {errors.country && <span className="error-message">{errors.country}</span>}
               </div>
             </div>
 
             {processing ? (
-              <div className="processing">
-                <h3>🔄 Processing Payment...</h3>
-                <p>Please wait while we securely process your Visa payment.</p>
+              <div style={{ textAlign: 'center', padding: '40px' }}>
+                <div style={{ 
+                  width: '60px', 
+                  height: '60px', 
+                  border: '4px solid #E9ECEF', 
+                  borderTop: '4px solid #D4AF37', 
+                  borderRadius: '50%', 
+                  animation: 'spin 1s linear infinite',
+                  margin: '0 auto 20px'
+                }}></div>
+                <h3 style={{ fontFamily: "'Playfair Display', serif", color: '#0A1628', marginBottom: '12px' }}>Processing Payment...</h3>
+                <p style={{ color: '#6C757D' }}>Please wait while we securely process your Visa payment.</p>
+                <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
               </div>
             ) : (
-              <button type="submit" className="pay-button">
+              <button 
+                type="submit" 
+                style={{
+                  background: 'linear-gradient(135deg, #D4AF37 0%, #FFD700 50%, #B8860B 100%)',
+                  color: '#0A1628',
+                  border: 'none',
+                  padding: '18px 40px',
+                  borderRadius: '12px',
+                  fontSize: '18px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  width: '100%',
+                  maxWidth: '320px',
+                  margin: '0 auto',
+                  display: 'block',
+                  boxShadow: '0 4px 20px rgba(212, 175, 55, 0.3)',
+                  letterSpacing: '0.5px'
+                }}
+              >
                 💳 Pay with Visa
               </button>
             )}
@@ -497,3 +536,4 @@ const PaymentPage = () => {
 };
 
 export default PaymentPage;
+

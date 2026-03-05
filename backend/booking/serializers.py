@@ -2,7 +2,7 @@ from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.models import User
-from .models import CustomUser, Flight, Booking
+from .models import CustomUser, Flight, Booking, Vendor, VendorProduct
 
 class CustomUserSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(
@@ -289,3 +289,53 @@ class BookingSearchSerializer(serializers.Serializer):
         max_value=100,
         help_text="Number of results per page"
     )
+
+
+# Vendor Serializers
+class VendorProductSerializer(serializers.ModelSerializer):
+    """Serializer for VendorProduct model."""
+    
+    class Meta:
+        model = VendorProduct
+        fields = ['id', 'name', 'description', 'category', 'price', 'price_unit', 
+                  'image_url', 'is_active', 'created_at', 'updated_at']
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        # Add vendor info to each product
+        data['vendor_name'] = instance.vendor.business_name
+        data['vendor_id'] = instance.vendor.id
+        return data
+
+
+class VendorSerializer(serializers.ModelSerializer):
+    """Serializer for Vendor model."""
+    products = VendorProductSerializer(many=True, read_only=True)
+    owner_name = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Vendor
+        fields = ['id', 'business_name', 'description', 'contact_email', 'contact_phone',
+                  'address', 'logo_url', 'website', 'is_approved', 'created_at', 
+                  'updated_at', 'products', 'owner_name']
+    
+    def get_owner_name(self, obj):
+        return f"{obj.user.first_name} {obj.user.last_name}".strip() or obj.user.username
+
+
+class VendorCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating a Vendor profile."""
+    
+    class Meta:
+        model = Vendor
+        fields = ['business_name', 'description', 'contact_email', 'contact_phone',
+                  'address', 'logo_url', 'website']
+
+
+class VendorProductCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating a VendorProduct."""
+    
+    class Meta:
+        model = VendorProduct
+        fields = ['name', 'description', 'category', 'price', 'price_unit', 
+                  'image_url', 'is_active']

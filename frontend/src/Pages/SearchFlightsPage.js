@@ -1,18 +1,77 @@
-// src/Pages/SearchFlightsPage.js
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { searchFlights, searchAirports } from '../Features/flightsSlice';
+import { getNearestAirport } from '../api/api';
+
+// SVG Icons
+const PlaneIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+  </svg>
+);
+
+const LocationIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+    <circle cx="12" cy="10" r="3"/>
+  </svg>
+);
+
+const CalendarIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+    <line x1="16" y1="2" x2="16" y2="6"/>
+    <line x1="8" y1="2" x2="8" y2="6"/>
+    <line x1="3" y1="10" x2="21" y2="10"/>
+  </svg>
+);
+
+const UsersIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+    <circle cx="9" cy="7" r="4"/>
+    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+  </svg>
+);
+
+const SwapIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="17 1 21 5 17 9"/>
+    <path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+    <polyline points="7 23 3 19 7 15"/>
+    <path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+  </svg>
+);
+
+const SearchIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="11" cy="11" r="8"/>
+    <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+  </svg>
+);
+
+const MinusIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="5" y1="12" x2="19" y2="12"/>
+  </svg>
+);
+
+const PlusIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="12" y1="5" x2="12" y2="19"/>
+    <line x1="5" y1="12" x2="19" y2="12"/>
+  </svg>
+);
 
 const SearchFlightsPage = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { flights, loading, error } = useSelector((state) => state.flights);
   
-  // Trip type state
   const [tripType, setTripType] = useState('roundtrip');
   
-  // Search form state
   const [searchData, setSearchData] = useState({
     from: '',
     fromCode: '',
@@ -25,17 +84,16 @@ const SearchFlightsPage = () => {
     nonStop: false
   });
   
-  // Autocomplete state
   const [fromSuggestions, setFromSuggestions] = useState([]);
   const [toSuggestions, setToSuggestions] = useState([]);
   const [showFromSuggestions, setShowFromSuggestions] = useState(false);
   const [showToSuggestions, setShowToSuggestions] = useState(false);
+  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
+  const [locationError, setLocationError] = useState(null);
   
-  // Refs for click outside
   const fromRef = useRef(null);
   const toRef = useRef(null);
   
-  // Popular airports for quick selection
   const popularAirports = [
     { code: 'JFK', name: 'New York John F. Kennedy', city: 'New York', country: 'USA' },
     { code: 'LAX', name: 'Los Angeles International', city: 'Los Angeles', country: 'USA' },
@@ -51,7 +109,6 @@ const SearchFlightsPage = () => {
     { code: 'ATL', name: 'Atlanta Hartsfield-Jackson', city: 'Atlanta', country: 'USA' }
   ];
 
-  // Close suggestions when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (fromRef.current && !fromRef.current.contains(event.target)) {
@@ -65,7 +122,6 @@ const SearchFlightsPage = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Search for airports
   const handleAirportSearch = async (keyword, isFrom) => {
     if (keyword.length < 2) {
       if (isFrom) setFromSuggestions([]);
@@ -180,147 +236,546 @@ const SearchFlightsPage = () => {
 
   const today = new Date().toISOString().split('T')[0];
 
+  const handleFindNearbyAirports = async () => {
+    if (!navigator.geolocation) {
+      setLocationError('Geolocation is not supported by your browser');
+      return;
+    }
+
+    setIsDetectingLocation(true);
+    setLocationError(null);
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        
+        try {
+          const result = await getNearestAirport(latitude, longitude);
+          
+          if (result.success && result.data) {
+            const airport = result.data;
+            setSearchData(prev => ({
+              ...prev,
+              from: airport.city || airport.name,
+              fromCode: airport.iataCode
+            }));
+          } else {
+            setLocationError('No nearby airport found');
+          }
+        } catch (err) {
+          console.error('Error finding nearby airports:', err);
+          setLocationError('Failed to find nearby airports');
+        } finally {
+          setIsDetectingLocation(false);
+        }
+      },
+      (error) => {
+        console.error('Geolocation error:', error);
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            setLocationError('Location permission denied. Please enable location access.');
+            break;
+          case error.POSITION_UNAVAILABLE:
+            setLocationError('Location information is unavailable.');
+            break;
+          case error.TIMEOUT:
+            setLocationError('Location request timed out.');
+            break;
+          default:
+            setLocationError('An unknown error occurred.');
+        }
+        setIsDetectingLocation(false);
+      },
+      { timeout: 10000, enableHighAccuracy: false }
+    );
+  };
+
   return (
     <>
       <style>{`
         @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        .search-container { animation: fadeIn 0.8s ease-out; }
-        .search-card { background: linear-gradient(rgba(0, 40, 85, 0.85), rgba(0, 40, 85, 0.7)), url('https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=1200&q=80'); background-size: cover; background-position: center; border-radius: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08); overflow: hidden; }
-        .search-tabs { display: flex; border-bottom: 1px solid rgba(255, 255, 255, 0.2); background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); }
-        .search-tab { flex: 1; padding: 16px 24px; border: none; background: transparent; cursor: pointer; font-size: 15px; font-weight: 600; color: #666; transition: all 0.3s ease; position: relative; }
-        .search-tab:hover { background: #fff; color: #002855; }
-        .search-tab.active { background: #fff; color: #002855; }
-        .search-tab.active::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 3px; background: #002855; }
-        .search-tab-icon { margin-right: 8px; }
-        .search-form-container { padding: 24px; background: #fff; }
-        .search-row { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
-        .search-field { flex: 1; min-width: 200px; position: relative; }
-        .search-field label { display: block; font-size: 12px; font-weight: 600; color: #666; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .search-field input, .search-field select { width: 100%; padding: 12px 16px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; color: #333; transition: all 0.3s ease; background: #fff; }
-        .search-field input:focus, .search-field select:focus { outline: none; border-color: #002855; box-shadow: 0 0 0 3px rgba(0, 40, 85, 0.1); }
-        .swap-button { width: 40px; height: 40px; border: 1px solid #ddd; border-radius: 50%; background: #f8f9fa; cursor: pointer; display: flex; align-items: center; justify-content: center; margin: 24px 8px 0; transition: all 0.3s ease; align-self: flex-start; font-size: 18px; }
-        .swap-button:hover { background: #002855; color: #fff; border-color: #002855; }
-        .suggestions-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); z-index: 100; max-height: 280px; overflow-y: auto; margin-top: 4px; }
-        .suggestion-item { padding: 12px 16px; cursor: pointer; border-bottom: 1px solid #f0f0f0; transition: background 0.2s ease; }
-        .suggestion-item:hover { background: #f8f9fa; }
-        .suggestion-code { font-weight: 700; color: #002855; font-size: 14px; }
-        .suggestion-city { font-weight: 500; color: #333; font-size: 14px; }
-        .suggestion-name { font-size: 12px; color: #666; }
-        .passenger-input-group { display: flex; align-items: center; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; }
-        .passenger-btn { width: 36px; height: 42px; border: none; background: #f8f9fa; cursor: pointer; font-size: 18px; color: #002855; transition: background 0.2s ease; }
-        .passenger-btn:hover { background: #e9ecef; }
-        .passenger-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-        .passenger-value { flex: 1; text-align: center; font-size: 15px; font-weight: 500; color: #333; min-width: 80px; }
-        .checkbox-field { display: flex; align-items: center; gap: 8px; padding: 12px 0; }
-        .checkbox-field input[type="checkbox"] { width: 18px; height: 18px; accent-color: #002855; cursor: pointer; }
-        .checkbox-field label { font-size: 14px; color: #333; cursor: pointer; margin: 0; }
-        .search-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e0e0e0; }
-        .search-button { background: #002855; color: white; border: none; padding: 14px 40px; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; display: flex; align-items: center; gap: 8px; }
-        .search-button:hover { background: #003d80; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 40, 85, 0.3); }
-        .search-button:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-        .flight-results { margin-top: 30px; }
-        .results-title { font-size: 20px; font-weight: 700; color: #002855; }
-        .results-count { color: #666; font-size: 14px; }
-        .flight-card { background: #fff; border: 1px solid #e0e0e0; border-radius: 12px; margin-bottom: 16px; overflow: hidden; transition: all 0.3s ease; }
-        .flight-card:hover { box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12); border-color: #002855; }
-        .flight-card-main { display: flex; padding: 20px; align-items: center; }
-        .airline-info { display: flex; align-items: center; gap: 12px; min-width: 180px; }
-        .airline-logo { width: 40px; height: 40px; border-radius: 8px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 12px; }
-        .airline-name { font-size: 13px; color: #666; }
-        .flight-number { font-weight: 600; color: #333; }
-        .flight-times { display: flex; align-items: center; flex: 1; gap: 16px; }
-        .time-block { text-align: center; min-width: 80px; }
-        .time-value { font-size: 20px; font-weight: 700; color: #002855; }
-        .time-date { font-size: 12px; color: #666; }
-        .flight-duration { flex: 1; text-align: center; padding: 0 20px; }
-        .duration-line { display: flex; align-items: center; justify-content: center; gap: 8px; }
-        .duration-dot { width: 8px; height: 8px; border-radius: 50%; background: #ccc; }
-        .duration-line::before, .duration-line::after { content: ''; flex: 1; height: 1px; background: #ddd; }
-        .duration-value { font-size: 13px; color: #666; margin-top: 4px; }
-        .stops-info { font-size: 12px; color: #666; }
-        .stops-info.direct { color: #28a745; }
-        .flight-price-section { min-width: 140px; text-align: right; }
-        .price-value { font-size: 24px; font-weight: 700; color: #002855; }
-        .price-note { font-size: 11px; color: #999; }
-        .book-button { background: #002855; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; margin-top: 8px; }
-        .book-button:hover { background: #003d80; }
-        .flight-card-footer { background: #f8f9fa; padding: 12px 20px; display: flex; gap: 20px; font-size: 12px; color: #666; }
-        .back-button { position: fixed; top: 20px; left: 20px; background: #002855; color: white; border: none; padding: 12px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); transition: all 0.3s ease; z-index: 1000; }
-        .back-button:hover { background: #003d80; transform: translateY(-2px); }
-        .loading { text-align: center; padding: 60px 20px; }
-        .loading-spinner { width: 48px; height: 48px; border: 4px solid #e0e0e0; border-top-color: #002855; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px; }
         @keyframes spin { to { transform: rotate(360deg); } }
-        .loading-text { color: #666; font-size: 16px; }
-        .no-results { text-align: center; padding: 60px 20px; background: #fff; border-radius: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08); }
-        .no-results-icon { font-size: 48px; margin-bottom: 16px; }
-        .no-results-title { font-size: 20px; font-weight: 600; color: #333; margin-bottom: 8px; }
-        .no-results-text { color: #666; font-size: 14px; }
-        .error-message { text-align: center; padding: 40px; background: #fff5f5; border: 1px solid #ffcccc; border-radius: 12px; margin-top: 20px; }
-        .error-title { color: #d32f2f; font-size: 18px; font-weight: 600; margin-bottom: 8px; }
-        .error-text { color: #666; font-size: 14px; }
-        @media (max-width: 768px) {
-          .search-row { flex-direction: column; }
-          .search-field { min-width: 100%; }
-          .swap-button { align-self: center; margin: 8px; }
-          .flight-card-main { flex-direction: column; gap: 16px; }
-          .airline-info, .flight-times, .flight-price-section { width: 100%; justify-content: center; }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        @keyframes gradientMove { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+        @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(20, 184, 166, 0.4); } 50% { box-shadow: 0 0 20px 10px rgba(20, 184, 166, 0); } }
+        
+        .neu-card {
+          background: linear-gradient(145deg, #ffffff, #f0f5ff);
+          border-radius: 24px;
+          box-shadow: 20px 20px 60px #d1d9e6, -20px -20px 60px #ffffff;
+          border: 1px solid rgba(255, 255, 255, 0.8);
+        }
+        
+        .neu-button {
+          background: linear-gradient(145deg, #3B82F6, #2563EB);
+          border-radius: 16px;
+          box-shadow: 6px 6px 12px #c5d1e0, -6px -6px 12px #ffffff;
+          transition: all 0.3s ease;
+          border: none;
+        }
+        
+        .neu-button:hover {
+          transform: translateY(-2px);
+          box-shadow: 10px 10px 20px #c5d1e0, -10px -10px 20px #ffffff;
+        }
+        
+        .neu-input {
+          background: linear-gradient(145deg, #f8faff, #e8eef7);
+          border-radius: 16px;
+          box-shadow: inset 5px 5px 10px #d1d9e6, inset -5px -5px 10px #ffffff;
+          border: 2px solid transparent;
+          transition: all 0.3s ease;
+        }
+        
+        .neu-input:focus {
+          border-color: #14B8A6;
+          box-shadow: inset 3px 3px 6px #d1d9e6, inset -3px -3px 6px #ffffff, 0 0 0 4px rgba(20, 184, 166, 0.1);
+        }
+        
+        .flight-card {
+          background: linear-gradient(145deg, #ffffff, #f8faff);
+          border-radius: 20px;
+          box-shadow: 10px 10px 30px #d1d9e6, -10px -10px 30px #ffffff;
+          transition: all 0.3s ease;
+        }
+        
+        .flight-card:hover {
+          transform: translateY(-8px);
+          box-shadow: 20px 20px 40px #c5d1e0, -20px -20px 40px #ffffff;
+        }
+        
+        .glow-button {
+          background: linear-gradient(135deg, #14B8A6 0%, #0D9488 100%);
+          box-shadow: 0 4px 15px rgba(20, 184, 166, 0.4);
+          animation: pulse 2s infinite;
+        }
+        
+        .glow-button:hover {
+          background: linear-gradient(135deg, #0D9488 0%, #0f766e 100%);
+          box-shadow: 0 6px 25px rgba(20, 184, 166, 0.5);
         }
       `}</style>
       
-      <button className="back-button" onClick={() => navigate('/dashboard')}>← Back</button>
+      {/* Back Button */}
+      <button 
+        className="back-button"
+        onClick={() => navigate('/dashboard')}
+        style={{
+          position: 'fixed',
+          top: '24px',
+          left: '24px',
+          background: 'linear-gradient(145deg, #ffffff, #f0f5ff)',
+          color: '#0A1628',
+          border: 'none',
+          padding: '14px 24px',
+          borderRadius: '16px',
+          fontSize: '14px',
+          fontWeight: '600',
+          cursor: 'pointer',
+          boxShadow: '8px 8px 16px #d1d9e6, -8px -8px 16px #ffffff',
+          transition: 'all 0.3s ease',
+          zIndex: 1000,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+        Back
+      </button>
       
-      <div className="search-container" style={{
+      {/* Main Container with Sky Background */}
+      <div style={{
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%)',
-        padding: '80px 20px 40px',
-        fontFamily: "'Segoe UI', Arial, sans-serif"
+        padding: '100px 24px 60px',
+        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+        background: 'linear-gradient(120deg, #e0f2fe 0%, #f0f9ff 50%, #e0f2fe 100%)',
+        backgroundSize: '200% 200%',
+        animation: 'gradientMove 15s ease infinite',
+        position: 'relative',
+        overflow: 'hidden'
       }}>
-        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
+        {/* Decorative Clouds */}
+        <div style={{
+          position: 'absolute',
+          top: '10%',
+          left: '5%',
+          width: '200px',
+          height: '80px',
+          background: 'radial-gradient(ellipse, rgba(255,255,255,0.8) 0%, transparent 70%)',
+          borderRadius: '50%',
+          filter: 'blur(20px)',
+          animation: 'float 6s ease-in-out infinite'
+        }}></div>
+        <div style={{
+          position: 'absolute',
+          top: '20%',
+          right: '10%',
+          width: '150px',
+          height: '60px',
+          background: 'radial-gradient(ellipse, rgba(255,255,255,0.6) 0%, transparent 70%)',
+          borderRadius: '50%',
+          filter: 'blur(15px)',
+          animation: 'float 8s ease-in-out infinite 1s'
+        }}></div>
+        <div style={{
+          position: 'absolute',
+          bottom: '30%',
+          left: '15%',
+          width: '180px',
+          height: '70px',
+          background: 'radial-gradient(ellipse, rgba(20, 184, 166, 0.1) 0%, transparent 70%)',
+          borderRadius: '50%',
+          filter: 'blur(25px)',
+          animation: 'float 7s ease-in-out infinite 0.5s'
+        }}></div>
+        
+        <div style={{ maxWidth: '1100px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
           
-          {/* Amadeus-style Search Card */}
-          <div className="search-card">
+          {/* Header Section */}
+          <div style={{ textAlign: 'center', marginBottom: '40px', animation: 'fadeIn 0.8s ease-out' }}>
+            <h1 style={{
+              fontSize: '42px',
+              fontWeight: '700',
+              background: 'linear-gradient(135deg, #0A1628 0%, #3B82F6 50%, #14B8A6 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              marginBottom: '12px',
+              fontFamily: "'Inter', sans-serif"
+            }}>
+              Where would you like to fly?
+            </h1>
+            <p style={{ fontSize: '18px', color: '#64748B', fontWeight: '400' }}>
+              Discover amazing destinations at the best prices
+            </p>
+          </div>
+          
+          {/* Search Card - Neumorphic Design */}
+          <div className="neu-card" style={{
+            padding: '0',
+            overflow: 'hidden',
+            animation: 'fadeIn 0.8s ease-out 0.2s both'
+          }}>
+            {/* Color Accent Bar */}
+            <div style={{
+              height: '6px',
+              background: 'linear-gradient(90deg, #3B82F6, #14B8A6, #3B82F6)',
+              backgroundSize: '200% 100%',
+              animation: 'gradientMove 3s ease infinite'
+            }}></div>
+            
             {/* Trip Type Tabs */}
-            <div className="search-tabs">
-              <button className={`search-tab ${tripType === 'roundtrip' ? 'active' : ''}`} onClick={() => setTripType('roundtrip')}>
-                <span className="search-tab-icon">🔄</span>Round Trip
+            <div style={{
+              display: 'flex',
+              padding: '16px 24px',
+              gap: '12px',
+              background: 'rgba(248, 250, 252, 0.5)'
+            }}>
+              <button 
+                onClick={() => setTripType('roundtrip')}
+                style={{
+                  flex: 1,
+                  padding: '14px 24px',
+                  border: 'none',
+                  borderRadius: '14px',
+                  fontSize: '15px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  background: tripType === 'roundtrip' 
+                    ? 'linear-gradient(145deg, #14B8A6, #0D9488)' 
+                    : 'transparent',
+                  color: tripType === 'roundtrip' ? 'white' : '#64748B',
+                  boxShadow: tripType === 'roundtrip'
+                    ? '0 4px 15px rgba(20, 184, 166, 0.3)'
+                    : 'none'
+                }}
+              >
+                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
+                  </svg>
+                  Round Trip
+                </span>
               </button>
-              <button className={`search-tab ${tripType === 'oneway' ? 'active' : ''}`} onClick={() => setTripType('oneway')}>
-                <span className="search-tab-icon">➡️</span>One Way
+              <button 
+                onClick={() => setTripType('oneway')}
+                style={{
+                  flex: 1,
+                  padding: '14px 24px',
+                  border: 'none',
+                  borderRadius: '14px',
+                  fontSize: '15px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  background: tripType === 'oneway' 
+                    ? 'linear-gradient(145deg, #14B8A6, #0D9488)' 
+                    : 'transparent',
+                  color: tripType === 'oneway' ? 'white' : '#64748B',
+                  boxShadow: tripType === 'oneway'
+                    ? '0 4px 15px rgba(20, 184, 166, 0.3)'
+                    : 'none'
+                }}
+              >
+                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M5 12h14M12 5l7 7-7 7"/>
+                  </svg>
+                  One Way
+                </span>
               </button>
             </div>
             
             {/* Search Form */}
-            <form className="search-form-container" onSubmit={handleSearch}>
+            <form onSubmit={handleSearch} style={{ padding: '32px', background: 'rgba(255, 255, 255, 0.7)' }}>
               {/* Origin and Destination */}
-              <div className="search-row">
-                <div className="search-field" ref={fromRef}>
-                  <label>From</label>
-                  <input type="text" name="from" value={searchData.from} onChange={handleInputChange} placeholder="City or airport" required />
+              <div style={{ display: 'flex', gap: '16px', marginBottom: '20px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                <div style={{ flex: 1, minWidth: '200px', position: 'relative' }} ref={fromRef}>
+                  <label style={{ 
+                    display: 'block', 
+                    fontSize: '12px', 
+                    fontWeight: '700', 
+                    color: '#64748B', 
+                    marginBottom: '10px', 
+                    textTransform: 'uppercase', 
+                    letterSpacing: '1.5px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}>
+                    <LocationIcon /> From
+                  </label>
+                  <input 
+                    type="text" 
+                    name="from" 
+                    value={searchData.from} 
+                    onChange={handleInputChange} 
+                    placeholder="City or airport" 
+                    required 
+                    className="neu-input"
+                    style={{
+                      width: '100%',
+                      padding: '16px 20px',
+                      border: 'none',
+                      borderRadius: '16px',
+                      fontSize: '15px',
+                      color: '#0A1628',
+                      outline: 'none',
+                      background: 'transparent'
+                    }}
+                  />
+                  {/* GPS Location Button */}
+                  <button 
+                    type="button"
+                    onClick={handleFindNearbyAirports}
+                    disabled={isDetectingLocation}
+                    title="Find nearby airports"
+                    style={{
+                      position: 'absolute',
+                      right: '12px',
+                      top: '42px',
+                      background: isDetectingLocation 
+                        ? 'rgba(148, 163, 184, 0.2)' 
+                        : 'linear-gradient(145deg, #3B82F6, #2563EB)',
+                      border: 'none',
+                      borderRadius: '10px',
+                      padding: '8px 12px',
+                      cursor: isDetectingLocation ? 'not-allowed' : 'pointer',
+                      fontSize: '12px',
+                      color: 'white',
+                      fontWeight: '600',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      transition: 'all 0.3s ease',
+                      whiteSpace: 'nowrap',
+                      boxShadow: isDetectingLocation ? 'none' : '0 2px 8px rgba(59, 130, 246, 0.3)'
+                    }}
+                  >
+                    {isDetectingLocation ? (
+                      <span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>⟳</span>
+                    ) : (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M12 2v4m0 12v4M2 12h4m12 0h4"/>
+                      </svg>
+                    )}
+                    {isDetectingLocation ? 'Detecting...' : 'Near Me'}
+                  </button>
+                  {locationError && (
+                    <div style={{ fontSize: '11px', color: '#EF4444', marginTop: '6px', fontWeight: '500' }}>{locationError}</div>
+                  )}
                   {showFromSuggestions && fromSuggestions.length > 0 && (
-                    <div className="suggestions-dropdown">
+                    <div style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: 0,
+                      right: 0,
+                      background: 'white',
+                      borderRadius: '16px',
+                      boxShadow: '0 20px 50px rgba(0, 0, 0, 0.15)',
+                      zIndex: 100,
+                      maxHeight: '300px',
+                      overflowY: 'auto',
+                      marginTop: '8px',
+                      border: '1px solid rgba(20, 184, 166, 0.2)'
+                    }}>
                       {fromSuggestions.map((airport, index) => (
-                        <div key={index} className="suggestion-item" onClick={() => handleFromSelect(airport)}>
-                          <span className="suggestion-code">{airport.code}</span>
-                          <span className="suggestion-city"> - {airport.city}</span>
-                          <div className="suggestion-name">{airport.name || airport.country}</div>
+                        <div 
+                          key={index} 
+                          onClick={() => handleFromSelect(airport)}
+                          style={{
+                            padding: '14px 20px',
+                            cursor: 'pointer',
+                            borderBottom: index < fromSuggestions.length - 1 ? '1px solid #F1F5F9' : 'none',
+                            transition: 'background 0.2s ease',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px'
+                          }}
+                          onMouseOver={(e) => e.target.style.background = 'rgba(20, 184, 166, 0.08)'}
+                          onMouseOut={(e) => e.target.style.background = 'transparent'}
+                        >
+                          <div style={{
+                            width: '40px',
+                            height: '40px',
+                            borderRadius: '12px',
+                            background: 'linear-gradient(135deg, #3B82F6, #14B8A6)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'white',
+                            fontWeight: '700',
+                            fontSize: '12px'
+                          }}>
+                            {airport.code}
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: '600', color: '#0A1628', fontSize: '14px' }}>{airport.city}</div>
+                            <div style={{ fontSize: '12px', color: '#94A3B8' }}>{airport.name}</div>
+                          </div>
                         </div>
                       ))}
                     </div>
                   )}
                 </div>
                 
-                <button type="button" className="swap-button" onClick={handleSwapLocations} title="Swap locations">⇄</button>
+                <button 
+                  type="button" 
+                  onClick={handleSwapLocations}
+                  title="Swap locations"
+                  style={{
+                    width: '48px',
+                    height: '48px',
+                    border: 'none',
+                    borderRadius: '50%',
+                    background: 'linear-gradient(145deg, #ffffff, #e8eef7)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginTop: '32px',
+                    transition: 'all 0.3s ease',
+                    color: '#14B8A6',
+                    boxShadow: '6px 6px 12px #d1d9e6, -6px -6px 12px #ffffff'
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.transform = 'rotate(180deg)';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.transform = 'rotate(0deg)';
+                  }}
+                >
+                  <SwapIcon />
+                </button>
                 
-                <div className="search-field" ref={toRef}>
-                  <label>To</label>
-                  <input type="text" name="to" value={searchData.to} onChange={handleInputChange} placeholder="City or airport" required />
+                <div style={{ flex: 1, minWidth: '200px', position: 'relative' }} ref={toRef}>
+                  <label style={{ 
+                    display: 'block', 
+                    fontSize: '12px', 
+                    fontWeight: '700', 
+                    color: '#64748B', 
+                    marginBottom: '10px', 
+                    textTransform: 'uppercase', 
+                    letterSpacing: '1.5px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}>
+                    <LocationIcon /> To
+                  </label>
+                  <input 
+                    type="text" 
+                    name="to" 
+                    value={searchData.to} 
+                    onChange={handleInputChange} 
+                    placeholder="City or airport" 
+                    required 
+                    className="neu-input"
+                    style={{
+                      width: '100%',
+                      padding: '16px 20px',
+                      border: 'none',
+                      borderRadius: '16px',
+                      fontSize: '15px',
+                      color: '#0A1628',
+                      outline: 'none',
+                      background: 'transparent'
+                    }}
+                  />
                   {showToSuggestions && toSuggestions.length > 0 && (
-                    <div className="suggestions-dropdown">
+                    <div style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: 0,
+                      right: 0,
+                      background: 'white',
+                      borderRadius: '16px',
+                      boxShadow: '0 20px 50px rgba(0, 0, 0, 0.15)',
+                      zIndex: 100,
+                      maxHeight: '300px',
+                      overflowY: 'auto',
+                      marginTop: '8px',
+                      border: '1px solid rgba(20, 184, 166, 0.2)'
+                    }}>
                       {toSuggestions.map((airport, index) => (
-                        <div key={index} className="suggestion-item" onClick={() => handleToSelect(airport)}>
-                          <span className="suggestion-code">{airport.code}</span>
-                          <span className="suggestion-city"> - {airport.city}</span>
-                          <div className="suggestion-name">{airport.name || airport.country}</div>
+                        <div 
+                          key={index} 
+                          onClick={() => handleToSelect(airport)}
+                          style={{
+                            padding: '14px 20px',
+                            cursor: 'pointer',
+                            borderBottom: index < toSuggestions.length - 1 ? '1px solid #F1F5F9' : 'none',
+                            transition: 'background 0.2s ease',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px'
+                          }}
+                          onMouseOver={(e) => e.target.style.background = 'rgba(20, 184, 166, 0.08)'}
+                          onMouseOut={(e) => e.target.style.background = 'transparent'}
+                        >
+                          <div style={{
+                            width: '40px',
+                            height: '40px',
+                            borderRadius: '12px',
+                            background: 'linear-gradient(135deg, #3B82F6, #14B8A6)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'white',
+                            fontWeight: '700',
+                            fontSize: '12px'
+                          }}>
+                            {airport.code}
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: '600', color: '#0A1628', fontSize: '14px' }}>{airport.city}</div>
+                            <div style={{ fontSize: '12px', color: '#94A3B8' }}>{airport.name}</div>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -329,31 +784,188 @@ const SearchFlightsPage = () => {
               </div>
               
               {/* Dates and Passengers */}
-              <div className="search-row">
-                <div className="search-field">
-                  <label>Departure Date</label>
-                  <input type="date" name="departureDate" value={searchData.departureDate} onChange={handleInputChange} min={today} required />
+              <div style={{ display: 'flex', gap: '16px', marginBottom: '20px', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: '200px' }}>
+                  <label style={{ 
+                    display: 'block', 
+                    fontSize: '12px', 
+                    fontWeight: '700', 
+                    color: '#64748B', 
+                    marginBottom: '10px', 
+                    textTransform: 'uppercase', 
+                    letterSpacing: '1.5px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}>
+                    <CalendarIcon /> Departure
+                  </label>
+                  <input 
+                    type="date" 
+                    name="departureDate" 
+                    value={searchData.departureDate} 
+                    onChange={handleInputChange} 
+                    min={today} 
+                    required 
+                    className="neu-input"
+                    style={{
+                      width: '100%',
+                      padding: '16px 20px',
+                      border: 'none',
+                      borderRadius: '16px',
+                      fontSize: '15px',
+                      color: '#0A1628',
+                      outline: 'none',
+                      background: 'transparent'
+                    }}
+                  />
                 </div>
                 
                 {tripType === 'roundtrip' && (
-                  <div className="search-field">
-                    <label>Return Date</label>
-                    <input type="date" name="returnDate" value={searchData.returnDate} onChange={handleInputChange} min={searchData.departureDate || today} />
+                  <div style={{ flex: 1, minWidth: '200px' }}>
+                    <label style={{ 
+                      display: 'block', 
+                      fontSize: '12px', 
+                      fontWeight: '700', 
+                      color: '#64748B', 
+                      marginBottom: '10px', 
+                      textTransform: 'uppercase', 
+                      letterSpacing: '1.5px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}>
+                      <CalendarIcon /> Return
+                    </label>
+                    <input 
+                      type="date" 
+                      name="returnDate" 
+                      value={searchData.returnDate} 
+                      onChange={handleInputChange} 
+                      min={searchData.departureDate || today}
+                      className="neu-input"
+                      style={{
+                        width: '100%',
+                        padding: '16px 20px',
+                        border: 'none',
+                        borderRadius: '16px',
+                        fontSize: '15px',
+                        color: '#0A1628',
+                        outline: 'none',
+                        background: 'transparent'
+                      }}
+                    />
                   </div>
                 )}
                 
-                <div className="search-field">
-                  <label>Passengers</label>
-                  <div className="passenger-input-group">
-                    <button type="button" className="passenger-btn" onClick={() => setSearchData(p => ({ ...p, adults: Math.max(1, p.adults - 1) }))} disabled={searchData.adults <= 1}>−</button>
-                    <span className="passenger-value">{searchData.adults} Adult{searchData.adults > 1 ? 's' : ''}</span>
-                    <button type="button" className="passenger-btn" onClick={() => setSearchData(p => ({ ...p, adults: Math.min(9, p.adults + 1) }))} disabled={searchData.adults >= 9}>+</button>
+                <div style={{ flex: 1, minWidth: '200px' }}>
+                  <label style={{ 
+                    display: 'block', 
+                    fontSize: '12px', 
+                    fontWeight: '700', 
+                    color: '#64748B', 
+                    marginBottom: '10px', 
+                    textTransform: 'uppercase', 
+                    letterSpacing: '1.5px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}>
+                    <UsersIcon /> Travelers
+                  </label>
+                  <div style={{ 
+                    display: 'flex', 
+                    borderRadius: '16px',
+                    background: 'linear-gradient(145deg, #f8faff, #e8eef7)',
+                    boxShadow: 'inset 5px 5px 10px #d1d9e6, inset -5px -5px 10px #ffffff',
+                    overflow: 'hidden'
+                  }}>
+                    <button 
+                      type="button" 
+                      onClick={() => setSearchData(p => ({ ...p, adults: Math.max(1, p.adults - 1) }))} 
+                      disabled={searchData.adults <= 1}
+                      style={{
+                        width: '50px',
+                        height: '52px',
+                        border: 'none',
+                        background: 'transparent',
+                        cursor: searchData.adults <= 1 ? 'not-allowed' : 'pointer',
+                        fontSize: '18px',
+                        color: searchData.adults <= 1 ? '#CBD5E1' : '#14B8A6',
+                        transition: 'all 0.2s ease',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      <MinusIcon />
+                    </button>
+                    <div style={{ 
+                      flex: 1, 
+                      textAlign: 'center', 
+                      fontSize: '15px', 
+                      fontWeight: '600', 
+                      color: '#0A1628', 
+                      lineHeight: '52px',
+                      background: 'transparent'
+                    }}>
+                      {searchData.adults} {searchData.adults === 1 ? 'Traveler' : 'Travelers'}
+                    </div>
+                    <button 
+                      type="button" 
+                      onClick={() => setSearchData(p => ({ ...p, adults: Math.min(9, p.adults + 1) }))} 
+                      disabled={searchData.adults >= 9}
+                      style={{
+                        width: '50px',
+                        height: '52px',
+                        border: 'none',
+                        background: 'transparent',
+                        cursor: searchData.adults >= 9 ? 'not-allowed' : 'pointer',
+                        fontSize: '18px',
+                        color: searchData.adults >= 9 ? '#CBD5E1' : '#14B8A6',
+                        transition: 'all 0.2s ease',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      <PlusIcon />
+                    </button>
                   </div>
                 </div>
                 
-                <div className="search-field">
-                  <label>Cabin Class</label>
-                  <select name="travelClass" value={searchData.travelClass} onChange={handleInputChange}>
+                <div style={{ flex: 1, minWidth: '200px' }}>
+                  <label style={{ 
+                    display: 'block', 
+                    fontSize: '12px', 
+                    fontWeight: '700', 
+                    color: '#64748B', 
+                    marginBottom: '10px', 
+                    textTransform: 'uppercase', 
+                    letterSpacing: '1.5px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}>
+                    <PlaneIcon /> Class
+                  </label>
+                  <select 
+                    name="travelClass" 
+                    value={searchData.travelClass} 
+                    onChange={handleInputChange}
+                    className="neu-input"
+                    style={{
+                      width: '100%',
+                      padding: '16px 20px',
+                      border: 'none',
+                      borderRadius: '16px',
+                      fontSize: '15px',
+                      color: '#0A1628',
+                      outline: 'none',
+                      background: 'transparent',
+                      cursor: 'pointer'
+                    }}
+                  >
                     <option value="ECONOMY">Economy</option>
                     <option value="PREMIUM_ECONOMY">Premium Economy</option>
                     <option value="BUSINESS">Business</option>
@@ -363,18 +975,101 @@ const SearchFlightsPage = () => {
               </div>
               
               {/* Options */}
-              <div className="search-row">
-                <div className="checkbox-field">
-                  <input type="checkbox" id="nonStop" name="nonStop" checked={searchData.nonStop} onChange={(e) => setSearchData(p => ({ ...p, nonStop: e.target.checked }))} />
-                  <label htmlFor="nonStop">Direct flights only</label>
-                </div>
+              <div style={{ marginBottom: '24px' }}>
+                <label style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '12px', 
+                  padding: '16px 20px',
+                  cursor: 'pointer',
+                  borderRadius: '14px',
+                  background: 'linear-gradient(145deg, #f8faff, #e8eef7)',
+                  boxShadow: 'inset 3px 3px 6px #d1d9e6, inset -3px -3px 6px #ffffff',
+                  width: 'fit-content',
+                  transition: 'all 0.3s ease'
+                }}
+                onMouseOver={(e) => {
+                  if (!searchData.nonStop) {
+                    e.currentTarget.style.boxShadow = 'inset 5px 5px 10px #d1d9e6, inset -5px -5px 10px #ffffff';
+                  }
+                }}
+                onMouseOut={(e) => {
+                  if (!searchData.nonStop) {
+                    e.currentTarget.style.boxShadow = 'inset 3px 3px 6px #d1d9e6, inset -3px -3px 6px #ffffff';
+                  }
+                }}
+                >
+                  <div style={{
+                    width: '24px',
+                    height: '24px',
+                    borderRadius: '8px',
+                    background: searchData.nonStop 
+                      ? 'linear-gradient(145deg, #14B8A6, #0D9488)' 
+                      : 'linear-gradient(145deg, #ffffff, #f0f5ff)',
+                    boxShadow: searchData.nonStop
+                      ? '0 2px 8px rgba(20, 184, 166, 0.4)'
+                      : '2px 2px 6px #d1d9e6, -2px -2px 6px #ffffff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.3s ease'
+                  }}>
+                    {searchData.nonStop && (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                    )}
+                  </div>
+                  <input 
+                    type="checkbox" 
+                    id="nonStop" 
+                    name="nonStop" 
+                    checked={searchData.nonStop} 
+                    onChange={(e) => setSearchData(p => ({ ...p, nonStop: e.target.checked }))}
+                    style={{ display: 'none' }}
+                  />
+                  <span style={{ fontSize: '14px', color: '#0A1628', fontWeight: '600' }}>Direct flights only</span>
+                </label>
               </div>
               
               {/* Search Button */}
-              <div className="search-actions">
-                <div></div>
-                <button type="submit" className="search-button" disabled={loading}>
-                  {loading ? 'Searching...' : '🔍 Search Flights'}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '24px', borderTop: '1px solid #E2E8F0' }}>
+                <div style={{ fontSize: '13px', color: '#94A3B8' }}>
+                  {searchData.adults} {searchData.adults === 1 ? 'adult' : 'adults'} • {searchData.travelClass.replace('_', ' ')}
+                </div>
+                <button 
+                  type="submit" 
+                  disabled={loading}
+                  className="glow-button"
+                  style={{
+                    background: loading 
+                      ? 'linear-gradient(145deg, #94A3B8, #64748B)' 
+                      : 'linear-gradient(135deg, #14B8A6 0%, #0D9488 100%)',
+                    color: 'white',
+                    border: 'none',
+                    padding: '18px 56px',
+                    borderRadius: '16px',
+                    fontSize: '16px',
+                    fontWeight: '700',
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.3s ease',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    letterSpacing: '0.5px'
+                  }}
+                >
+                  {loading ? (
+                    <>
+                      <span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>⟳</span>
+                      Searching...
+                    </>
+                  ) : (
+                    <>
+                      <SearchIcon />
+                      Search Flights
+                    </>
+                  )}
                 </button>
               </div>
             </form>
@@ -382,60 +1077,205 @@ const SearchFlightsPage = () => {
           
           {/* Loading State */}
           {loading && (
-            <div className="loading">
-              <div className="loading-spinner"></div>
-              <div className="loading-text">Searching for the best flights...</div>
+            <div style={{ textAlign: 'center', padding: '80px 24px', animation: 'fadeIn 0.5s ease-out' }}>
+              <div style={{
+                width: '64px',
+                height: '64px',
+                border: '4px solid #E2E8F0',
+                borderTopColor: '#14B8A6',
+                borderRadius: '50%',
+                animation: 'spin 1s linear infinite',
+                margin: '0 auto 24px'
+              }}></div>
+              <div style={{ color: '#64748B', fontSize: '18px', fontWeight: '500' }}>Finding the best flights for you...</div>
             </div>
           )}
           
           {/* Flight Results */}
           {!loading && flights.length > 0 && (
-            <div className="flight-results">
-              <h2 className="results-title">✈️ Available Flights <span className="results-count">({flights.length} flights found)</span></h2>
+            <div style={{ marginTop: '48px', animation: 'fadeIn 0.8s ease-out' }}>
+              <h2 style={{ 
+                fontSize: '28px', 
+                fontWeight: '700', 
+                color: '#0A1628', 
+                marginBottom: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px'
+              }}>
+                <span style={{
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '14px',
+                  background: 'linear-gradient(135deg, #3B82F6, #14B8A6)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'white'
+                }}>
+                  <PlaneIcon />
+                </span>
+                Available Flights 
+                <span style={{ fontSize: '14px', fontWeight: '400', color: '#64748B', marginLeft: '8px' }}>
+                  ({flights.length} flights found)
+                </span>
+              </h2>
               
               {flights.map((flight, index) => (
-                <div key={flight.id || index} className="flight-card">
-                  <div className="flight-card-main">
-                    <div className="airline-info">
-                      <div className="airline-logo">{flight.airline ? flight.airline.substring(0, 2).toUpperCase() : flight.flightNumber?.substring(0, 2) || 'FL'}</div>
+                <div 
+                  key={flight.id || index}
+                  className="flight-card"
+                  style={{
+                    background: 'linear-gradient(145deg, #ffffff, #f8faff)',
+                    border: '1px solid rgba(20, 184, 166, 0.1)',
+                    borderRadius: '20px',
+                    marginBottom: '20px',
+                    overflow: 'hidden',
+                    boxShadow: '10px 10px 30px #d1d9e6, -10px -10px 30px #ffffff'
+                  }}
+                >
+                  <div style={{ display: 'flex', padding: '28px', alignItems: 'center', flexWrap: 'wrap', gap: '20px' }}>
+                    {/* Airline Info */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px', minWidth: '180px' }}>
+                      <div style={{
+                        width: '52px',
+                        height: '52px',
+                        borderRadius: '14px',
+                        background: 'linear-gradient(135deg, #3B82F6, #14B8A6)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white',
+                        fontWeight: '700',
+                        fontSize: '14px',
+                        boxShadow: '0 4px 15px rgba(20, 184, 166, 0.3)'
+                      }}>
+                        {flight.airline ? flight.airline.substring(0, 2).toUpperCase() : flight.flightNumber?.substring(0, 2) || 'FL'}
+                      </div>
                       <div>
-                        <div className="airline-name">{flight.airline || 'Airline'}</div>
-                        <div className="flight-number">{flight.flightNumber}</div>
+                        <div style={{ fontSize: '13px', color: '#64748B' }}>{flight.airline || 'Airline'}</div>
+                        <div style={{ fontWeight: '700', color: '#0A1628', fontSize: '16px' }}>{flight.flightNumber}</div>
                       </div>
                     </div>
                     
-                    <div className="flight-times">
-                      <div className="time-block">
-                        <div className="time-value">{formatTime(flight.departureTime)}</div>
-                        <div className="time-date">{formatDate(flight.departureTime)}</div>
-                        <div style={{ fontSize: '12px', color: '#666' }}>{flight.from_location}</div>
+                    {/* Flight Times */}
+                    <div style={{ display: 'flex', alignItems: 'center', flex: 1, gap: '24px', minWidth: '300px' }}>
+                      <div style={{ textAlign: 'center', minWidth: '80px' }}>
+                        <div style={{ fontSize: '24px', fontWeight: '700', color: '#0A1628' }}>{formatTime(flight.departureTime)}</div>
+                        <div style={{ fontSize: '12px', color: '#94A3B8', marginTop: '4px' }}>{formatDate(flight.departureTime)}</div>
+                        <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px', fontWeight: '500' }}>{flight.from_location}</div>
                       </div>
                       
-                      <div className="flight-duration">
-                        <div className="duration-line"><div className="duration-dot"></div></div>
-                        <div className="duration-value">{formatDuration(flight.duration)}</div>
-                        <div className={`stops-info ${flight.stops === 0 ? 'direct' : ''}`}>
-                          {flight.stops === 0 ? '✓ Direct' : `${flight.stops} stop${flight.stops > 1 ? 's' : ''}`}
+                      <div style={{ flex: 1, textAlign: 'center', padding: '0 20px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#14B8A6' }}></div>
+                          <div style={{ flex: 1, height: '3px', background: 'linear-gradient(90deg, #14B8A6, #3B82F6, #14B8A6)', borderRadius: '2px' }}></div>
+                          <div style={{ 
+                            width: '32px', 
+                            height: '32px', 
+                            borderRadius: '50%', 
+                            background: 'linear-gradient(135deg, #3B82F6, #14B8A6)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'white'
+                          }}>
+                            <PlaneIcon />
+                          </div>
+                          <div style={{ flex: 1, height: '3px', background: 'linear-gradient(90deg, #14B8A6, #3B82F6, #14B8A6)', borderRadius: '2px' }}></div>
+                          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#14B8A6' }}></div>
+                        </div>
+                        <div style={{ fontSize: '13px', color: '#64748B', marginTop: '8px', fontWeight: '500' }}>{formatDuration(flight.duration)}</div>
+                        <div style={{ 
+                          fontSize: '12px', 
+                          color: flight.stops === 0 ? '#14B8A6' : '#64748B', 
+                          fontWeight: flight.stops === 0 ? '600' : '400',
+                          marginTop: '4px'
+                        }}>
+                          {flight.stops === 0 ? '✓ Direct Flight' : `${flight.stops} stop${flight.stops > 1 ? 's' : ''}`}
                         </div>
                       </div>
                       
-                      <div className="time-block">
-                        <div className="time-value">{formatTime(flight.arrivalTime)}</div>
-                        <div className="time-date">{formatDate(flight.arrivalTime)}</div>
-                        <div style={{ fontSize: '12px', color: '#666' }}>{flight.to}</div>
+                      <div style={{ textAlign: 'center', minWidth: '80px' }}>
+                        <div style={{ fontSize: '24px', fontWeight: '700', color: '#0A1628' }}>{formatTime(flight.arrivalTime)}</div>
+                        <div style={{ fontSize: '12px', color: '#94A3B8', marginTop: '4px' }}>{formatDate(flight.arrivalTime)}</div>
+                        <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px', fontWeight: '500' }}>{flight.to}</div>
                       </div>
                     </div>
                     
-                    <div className="flight-price-section">
-                      <div className="price-value">{flight.currency === 'USD' ? '$' : flight.currency}{flight.price}</div>
-                      <div className="price-note">per person</div>
-                      <button className="book-button" onClick={() => handleBookFlight(flight)}>Select</button>
+                    {/* Price & Book */}
+                    <div style={{ minWidth: '150px', textAlign: 'right' }}>
+                      <div style={{ 
+                        fontSize: '32px', 
+                        fontWeight: '700', 
+                        color: '#0A1628',
+                        background: 'linear-gradient(135deg, #3B82F6, #14B8A6)',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                        backgroundClip: 'text'
+                      }}>
+                        {flight.currency === 'USD' ? '$' : flight.currency}{flight.price}
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#94A3B8', marginBottom: '12px' }}>per person</div>
+                      <button 
+                        onClick={() => handleBookFlight(flight)}
+                        style={{
+                          background: 'linear-gradient(135deg, #14B8A6 0%, #0D9488 100%)',
+                          color: 'white',
+                          border: 'none',
+                          padding: '14px 28px',
+                          borderRadius: '14px',
+                          fontSize: '14px',
+                          fontWeight: '700',
+                          cursor: 'pointer',
+                          transition: 'all 0.3s ease',
+                          boxShadow: '0 4px 15px rgba(20, 184, 166, 0.4)'
+                        }}
+                        onMouseOver={(e) => {
+                          e.currentTarget.style.transform = 'translateY(-2px)';
+                          e.currentTarget.style.boxShadow = '0 8px 25px rgba(20, 184, 166, 0.5)';
+                        }}
+                        onMouseOut={(e) => {
+                          e.currentTarget.style.transform = 'translateY(0)';
+                          e.currentTarget.style.boxShadow = '0 4px 15px rgba(20, 184, 166, 0.4)';
+                        }}
+                      >
+                        Select Flight
+                      </button>
                     </div>
                   </div>
                   
-                  <div className="flight-card-footer">
-                    <span>💺 {searchData.travelClass.replace('_', ' ')}</span>
-                    {flight.status && <span>📊 {flight.status}</span>}
+                  {/* Flight Details Footer */}
+                  <div style={{ 
+                    background: 'linear-gradient(145deg, #f8faff, #e8eef7)', 
+                    padding: '16px 28px', 
+                    display: 'flex', 
+                    gap: '24px', 
+                    fontSize: '13px', 
+                    color: '#64748B',
+                    borderTop: '1px solid rgba(20, 184, 166, 0.1)'
+                  }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+                        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+                      </svg>
+                      {searchData.travelClass.replace('_', ' ')}
+                    </span>
+                    {flight.status && (
+                      <span style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '6px',
+                        color: flight.status === 'On Time' ? '#14B8A6' : '#F59E0B'
+                      }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <circle cx="12" cy="12" r="10"/>
+                          <polyline points="12 6 12 12 16 14"/>
+                        </svg>
+                        {flight.status}
+                      </span>
+                    )}
                   </div>
                 </div>
               ))}
@@ -444,18 +1284,61 @@ const SearchFlightsPage = () => {
           
           {/* No Results */}
           {!loading && flights.length === 0 && searchData.from && searchData.to && searchData.departureDate && (
-            <div className="no-results">
-              <div className="no-results-icon">🛫</div>
-              <div className="no-results-title">No flights found</div>
-              <div className="no-results-text">Try adjusting your search criteria or check back later for more options.</div>
+            <div style={{ 
+              textAlign: 'center', 
+              padding: '80px 24px', 
+              background: 'linear-gradient(145deg, #ffffff, #f8faff)',
+              borderRadius: '24px', 
+              boxShadow: '0 20px 50px rgba(0, 0, 0, 0.1)', 
+              marginTop: '40px',
+              border: '1px solid rgba(20, 184, 166, 0.1)'
+            }}>
+              <div style={{ 
+                width: '100px', 
+                height: '100px', 
+                borderRadius: '50%', 
+                background: 'linear-gradient(135deg, #e0f2fe, #f0f9ff)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 24px',
+                fontSize: '48px'
+              }}>
+                🛫
+              </div>
+              <div style={{ fontSize: '24px', fontWeight: '700', color: '#0A1628', marginBottom: '12px' }}>No flights found</div>
+              <div style={{ color: '#64748B', fontSize: '16px', maxWidth: '400px', margin: '0 auto' }}>
+                Try adjusting your search criteria or check back later for more options.
+              </div>
             </div>
           )}
           
           {/* Error Message */}
           {!loading && error && (
-            <div className="error-message">
-              <div className="error-title">Error occurred</div>
-              <div className="error-text">{error}</div>
+            <div style={{ 
+              textAlign: 'center', 
+              padding: '48px', 
+              background: 'rgba(239, 68, 68, 0.05)', 
+              border: '1px solid rgba(239, 68, 68, 0.2)', 
+              borderRadius: '20px', 
+              marginTop: '32px' 
+            }}>
+              <div style={{ 
+                width: '56px', 
+                height: '56px', 
+                borderRadius: '50%', 
+                background: 'rgba(239, 68, 68, 0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 16px',
+                color: '#EF4444',
+                fontSize: '24px'
+              }}>
+                ⚠️
+              </div>
+              <div style={{ color: '#EF4444', fontSize: '18px', fontWeight: '600', marginBottom: '8px' }}>Error occurred</div>
+              <div style={{ color: '#64748B', fontSize: '15px' }}>{error}</div>
             </div>
           )}
           
@@ -466,3 +1349,4 @@ const SearchFlightsPage = () => {
 };
 
 export default SearchFlightsPage;
+

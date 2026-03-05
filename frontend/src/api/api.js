@@ -108,4 +108,43 @@ api.interceptors.response.use(
   }
 );
 
+// Hotel/Accommodation Search API
+export const searchHotels = async (params) => {
+  const { location, check_in, check_out, guests = 1, latitude, longitude } = params;
+  
+  // Build query params
+  const queryParams = new URLSearchParams();
+  if (location) queryParams.append('location', location);
+  if (check_in) queryParams.append('check_in', check_in);
+  if (check_out) queryParams.append('check_out', check_out);
+  if (guests) queryParams.append('guests', guests.toString());
+  if (latitude) queryParams.append('latitude', latitude.toString());
+  if (longitude) queryParams.append('longitude', longitude.toString());
+
+  const response = await api.get(`/hotels/search/?${queryParams.toString()}`);
+  return response.data;
+};
+
+// Get nearby airports based on GPS coordinates
+export const getNearbyAirports = async (latitude, longitude, limit = 5, maxDistance = 500) => {
+  const queryParams = new URLSearchParams();
+  queryParams.append('latitude', latitude.toString());
+  queryParams.append('longitude', longitude.toString());
+  queryParams.append('limit', limit.toString());
+  queryParams.append('max_distance', maxDistance.toString());
+
+  const response = await api.get(`/airports/nearby/?${queryParams.toString()}`);
+  return response.data;
+};
+
+// Get nearest airport based on GPS coordinates
+export const getNearestAirport = async (latitude, longitude) => {
+  const queryParams = new URLSearchParams();
+  queryParams.append('latitude', latitude.toString());
+  queryParams.append('longitude', longitude.toString());
+
+  const response = await api.get(`/airports/nearest/?${queryParams.toString()}`);
+  return response.data;
+};
+
 export default api;
